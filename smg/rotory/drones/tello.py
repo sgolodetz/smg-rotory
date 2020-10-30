@@ -324,7 +324,7 @@ class Tello:
                     self.__no_pending_frame.notify_all()
                     self.__video_lock.release()
 
-    def __send_command(self, cmd: str, *, expect_response: bool):
+    def __send_command(self, cmd: str, *, expect_response: bool) -> None:
         """
         Send the specified command to the drone.
 
@@ -341,7 +341,7 @@ class Tello:
                     return
 
             # Send the command to the Tello.
-            self.__cmd_link.socket.sendto(bytes(cmd, 'utf-8'), self.__cmd_link.remote_endpoint)
+            self.__cmd_link.socket.sendto(bytes(cmd, "utf-8"), self.__cmd_link.remote_endpoint)
 
             # Print the command that was sent, if desired.
             if self.__print_commands:

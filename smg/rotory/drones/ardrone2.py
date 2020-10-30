@@ -6,7 +6,7 @@ import sys
 import threading
 
 from collections import namedtuple
-from typing import Tuple
+from typing import Dict, List, Tuple
 
 from smg.rotory.net.udp_link import UDPLink
 
@@ -38,6 +38,7 @@ class ARDrone2:
         :param navdata_endpoint:    The remote endpoint (IP address and port) from which to receive navigation data.
         :param video_endpoint:      The remote endpoint (IP address and port) from which to receive video.
         """
+        self.__cmd_sequence_number: int = 1
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
         self.__pave_header_fmt: str = "4sBBHIHHHHIIBBBBIIHBBBB2sI12s"
@@ -45,6 +46,7 @@ class ARDrone2:
         self.__should_terminate: bool = False
 
         # Set up the locks and conditions.
+        self.__cmd_lock = threading.Lock()
         self.__video_lock = threading.Lock()
 
         self.__no_pending_frame = threading.Condition(self.__video_lock)
@@ -77,6 +79,33 @@ class ARDrone2:
         # Wait for all of the threads to terminate.
         self.__navdata_thread.join()
         self.__video_thread.join()
+
+    # PUBLIC STATIC METHODS
+
+    @staticmethod
+    def make_at_command(name: str, sequence_number: int, *args) -> bytes:
+        """
+        TODO
+
+        :param name:                TODO
+        :param sequence_number:     TODO
+        :param args:                TODO
+        :return:                    TODO
+        """
+        # TODO: Make this method private once I've finished checking it.
+        modified_args: List[str] = []
+
+        for arg in args:
+            t = type(arg)
+            if t is float:
+                modified_args.append(str(struct.unpack("i", struct.pack("f", arg))[0]))
+            elif t is int:
+                modified_args.append(str(arg))
+            elif t is str:
+                modified_args.append('"' + arg + '"')
+
+        fmt: str = f"AT*{name}=" + ("{}," * ARDrone2.__get_at_arg_count(name))[:-1] + "\r"
+        return bytes(fmt.format(sequence_number, *modified_args), "utf-8")
 
     # PUBLIC METHODS
 
@@ -193,6 +222,33 @@ class ARDrone2:
                     self.__video_lock.release()
 
     # PRIVATE STATIC METHODS
+
+    @staticmethod
+    def __get_at_arg_count(name: str) -> int:
+        """
+        TODO
+
+        :param name:    TODO
+        :return:        TODO
+        """
+        arg_counts: Dict[str, int] = {
+            "CALIB": 2,
+            "COMWDG": 1,
+            "CONFIG": 3,
+            "CONFIG_IDS": 4,
+            "CTRL": 3,
+            "FTRIM": 1,
+            "PCMD": 6,
+            "PCMD_MAG": 8,
+            "REF": 2
+        }
+
+        result: int = arg_counts.get(name)
+
+        if result is not None:
+            return result
+        else:
+            raise ValueError(f"Unknown command: {name}")
 
     @staticmethod
     def __make_tcp_socket(endpoint: Tuple[str, int], *, timeout: int = 10) -> socket.SocketType:
