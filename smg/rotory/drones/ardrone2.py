@@ -4,6 +4,7 @@ import socket
 import struct
 import sys
 import threading
+import time
 
 from collections import namedtuple
 from typing import Dict, List, Tuple
@@ -29,20 +30,30 @@ class ARDrone2:
     # CONSTRUCTORS
 
     def __init__(self, *,
+                 cmd_endpoint: Tuple[str, int] = ("192.168.1.1", 5556),
+                 control_endpoint: Tuple[str, int] = ("192.168.1.1", 5559),
                  local_ip: str = "192.168.1.2",
                  navdata_endpoint: Tuple[str, int] = ("192.168.1.1", 5554),
+                 print_control_messages: bool = True,
+                 print_navdata_messages: bool = False,
                  video_endpoint: Tuple[str, int] = ("192.168.1.1", 5555)):
         """
         Construct an ARDrone2 object, which provides a convenient interface to control a Parrot AR Drone 2.
 
-        :param navdata_endpoint:    The remote endpoint (IP address and port) from which to receive navigation data.
-        :param video_endpoint:      The remote endpoint (IP address and port) from which to receive video.
+        :param cmd_endpoint:            The remote endpoint (IP address and port) to which to send AT commands.
+        :param control_endpoint:        The remote endpoint (IP address and port) from which to receive critical data.
+        :param navdata_endpoint:        The remote endpoint (IP address and port) from which to receive navigation data.
+        :param print_control_messages:  Whether or not to print control messages.
+        :param print_navdata_messages:  Whether or not to print navdata messages.
+        :param video_endpoint:          The remote endpoint (IP address and port) from which to receive video.
         """
-        self.__cmd_sequence_number: int = 1
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
         self.__pave_header_fmt: str = "4sBBHIHHHHIIBBBBIIHBBBB2sI12s"
         self.__pave_header_size: int = struct.calcsize(self.__pave_header_fmt)
+        self.__print_control_messages: bool = print_control_messages
+        self.__print_navdata_messages: bool = print_navdata_messages
+        self.__sequence_number: int = 1
         self.__should_terminate: bool = False
 
         # Set up the locks and conditions.
@@ -52,16 +63,25 @@ class ARDrone2:
         self.__no_pending_frame = threading.Condition(self.__video_lock)
 
         # Set up the TCP connections.
+        self.__control_socket: socket.SocketType = ARDrone2.__make_tcp_socket(control_endpoint)
         self.__video_socket: socket.SocketType = ARDrone2.__make_tcp_socket(video_endpoint)
 
         # Set up the UDP links.
+        self.__cmd_link = UDPLink((local_ip, 5556), cmd_endpoint)
         self.__navdata_link = UDPLink((local_ip, 5554), navdata_endpoint)
 
         # Start the threads.
+        self.__control_thread = threading.Thread(target=self.__process_control_messages)
+        self.__control_thread.start()
+        self.__heartbeat_thread = threading.Thread(target=self.__process_heartbeats)
+        self.__heartbeat_thread.start()
         self.__navdata_thread = threading.Thread(target=self.__process_navdata_messages)
         self.__navdata_thread.start()
         self.__video_thread = threading.Thread(target=self.__process_video_messages)
         self.__video_thread.start()
+
+        # Request the current drone configuration.
+        self.__send_command("CTRL", 4, 0)
 
     # SPECIAL METHODS
 
@@ -78,34 +98,8 @@ class ARDrone2:
 
         # Wait for all of the threads to terminate.
         self.__navdata_thread.join()
+        self.__control_thread.join()
         self.__video_thread.join()
-
-    # PUBLIC STATIC METHODS
-
-    @staticmethod
-    def make_at_command(name: str, sequence_number: int, *args) -> bytes:
-        """
-        TODO
-
-        :param name:                TODO
-        :param sequence_number:     TODO
-        :param args:                TODO
-        :return:                    TODO
-        """
-        # TODO: Make this method private once I've finished checking it.
-        modified_args: List[str] = []
-
-        for arg in args:
-            t = type(arg)
-            if t is float:
-                modified_args.append(str(struct.unpack("i", struct.pack("f", arg))[0]))
-            elif t is int:
-                modified_args.append(str(arg))
-            elif t is str:
-                modified_args.append('"' + arg + '"')
-
-        fmt: str = f"AT*{name}=" + ("{}," * ARDrone2.__get_at_arg_count(name))[:-1] + "\r"
-        return bytes(fmt.format(sequence_number, *modified_args), "utf-8")
 
     # PUBLIC METHODS
 
@@ -123,7 +117,34 @@ class ARDrone2:
 
     # PRIVATE METHODS
 
-    def __process_navdata_messages(self):
+    def __process_control_messages(self) -> None:
+        """Process control messages sent by the drone."""
+        # While the drone should not terminate.
+        while not self.__should_terminate:
+            # Attempt to receive a control message from the drone.
+            try:
+                control_message = self.__control_socket.recv(4096)
+            except socket.timeout:
+                control_message = b"timeout"
+
+            # If this unblocks because the drone should terminate, exit.
+            if self.__should_terminate:
+                return
+
+            # Print the control message if desired.
+            if self.__print_control_messages:
+                print(f"Control Message ({len(control_message)}): {control_message}")
+
+    def __process_heartbeats(self) -> None:
+        """TODO"""
+        while not self.__should_terminate:
+            # Sleep for 30 milliseconds.
+            time.sleep(0.03)
+
+            # Send a COMWDG command to the drone to keep it awake.
+            self.__send_command("COMWDG")
+
+    def __process_navdata_messages(self) -> None:
         """Process navdata messages sent by the drone."""
         # Ask the drone to start sending navdata messages.
         # See: https://github.com/afq984/pyardrone/blob/master/pyardrone/navdata/__init__.py
@@ -141,10 +162,12 @@ class ARDrone2:
             if self.__should_terminate:
                 return
 
-            print(f"NavData Message: {navdata_message}")
+            # Print the navdata message that was sent, if desired.
+            if self.__print_navdata_messages:
+                print(f"NavData Message: {navdata_message}")
 
     # noinspection PyUnresolvedReferences
-    def __process_video_messages(self):
+    def __process_video_messages(self) -> None:
         """Process video messages sent by the drone."""
         # Tell PyAV not to print out any non-fatal logging messages (it's quite verbose otherwise).
         av.logging.set_level(av.logging.FATAL)
@@ -221,6 +244,23 @@ class ARDrone2:
                     self.__no_pending_frame.notify_all()
                     self.__video_lock.release()
 
+    def __send_command(self, name: str, *args) -> None:
+        """
+        TODO
+
+        :param name:    TODO
+        :param args:    TODO
+        """
+        with self.__cmd_lock:
+            # Send the command to the drone.
+            cmd: bytes = ARDrone2.__make_at_command(name, self.__sequence_number, *args)
+            self.__cmd_link.socket.sendto(cmd, self.__cmd_link.remote_endpoint)
+            self.__sequence_number += 1
+
+            # Print the command that was sent, if desired.
+            if True:
+                print(f"Sent Command: {cmd}")
+
     # PRIVATE STATIC METHODS
 
     @staticmethod
@@ -249,6 +289,30 @@ class ARDrone2:
             return result
         else:
             raise ValueError(f"Unknown command: {name}")
+
+    @staticmethod
+    def __make_at_command(name: str, sequence_number: int, *args) -> bytes:
+        """
+        TODO
+
+        :param name:                TODO
+        :param sequence_number:     TODO
+        :param args:                TODO
+        :return:                    TODO
+        """
+        modified_args: List[str] = []
+
+        for arg in args:
+            t = type(arg)
+            if t is float:
+                modified_args.append(str(struct.unpack("i", struct.pack("f", arg))[0]))
+            elif t is int:
+                modified_args.append(str(arg))
+            elif t is str:
+                modified_args.append('"' + arg + '"')
+
+        fmt: str = f"AT*{name}=" + ("{}," * ARDrone2.__get_at_arg_count(name))[:-1] + "\r"
+        return bytes(fmt.format(sequence_number, *modified_args), "utf-8")
 
     @staticmethod
     def __make_tcp_socket(endpoint: Tuple[str, int], *, timeout: int = 10) -> socket.SocketType:

@@ -29,17 +29,17 @@ class Tello:
         :param print_responses:         Whether or not to print command responses.
         :param print_state_messages:    Whether or not to print state messages.
         """
-        self.__frame_is_pending = False
-        self.__front_buffer = np.zeros((720, 960, 3), dtype=np.uint8)
-        self.__print_commands = print_commands
-        self.__print_responses = print_responses
-        self.__print_state_messages = print_state_messages
+        self.__frame_is_pending: bool = False
+        self.__front_buffer: np.ndarray = np.zeros((720, 960, 3), dtype=np.uint8)
+        self.__print_commands: bool = print_commands
+        self.__print_responses: bool = print_responses
+        self.__print_state_messages: bool = print_state_messages
         self.__rc_forward = 0
         self.__rc_right = 0
         self.__rc_up = 0
         self.__rc_yaw = 0
-        self.__response_is_pending = False
-        self.__should_terminate = False
+        self.__response_is_pending: bool = False
+        self.__should_terminate: bool = False
         self.__state_map: dict = {}
 
         # Set up the locks and conditions.
@@ -66,7 +66,7 @@ class Tello:
         self.__video_thread = threading.Thread(target=self.__process_video_messages)
         self.__video_thread.start()
 
-        # Tell the Tello to switch into SDK mode and start streaming video.
+        # Tell the drone to switch into SDK mode and start streaming video.
         self.__send_command("command", expect_response=True)
         self.__send_command("streamon", expect_response=True)
 
@@ -179,10 +179,10 @@ class Tello:
 
     # PRIVATE METHODS
 
-    def __process_command_responses(self):
+    def __process_command_responses(self) -> None:
         """Process command responses sent by the drone."""
         with self.__cmd_lock:
-            # While the Tello should not terminate:
+            # While the drone should not terminate:
             while not self.__should_terminate:
                 # Wait until a command has been sent to which a response is expected.
                 while not self.__response_is_pending:
@@ -192,7 +192,7 @@ class Tello:
                     if self.__should_terminate:
                         return
 
-                # Attempt to receive the response to the command from the Tello.
+                # Attempt to receive the response to the command from the drone.
                 try:
                     response, source = self.__cmd_link.socket.recvfrom(2048)
                 except socket.timeout:
@@ -212,7 +212,7 @@ class Tello:
                 self.__response_is_pending = False
                 self.__no_pending_response.notify()
 
-    def __process_heartbeats(self):
+    def __process_heartbeats(self) -> None:
         """Send regular flight control ("rc") messages to keep the drone awake."""
         # Send a flight control ("rc") command every 20ms to ensure that the drone stays awake.
         # Note #1: This is also how we control the drone's flight - it serves both purposes.
@@ -221,13 +221,13 @@ class Tello:
             # Sleep for 20 milliseconds.
             time.sleep(0.02)
 
-            # Construct the "rc" command to send to the Tello.
+            # Construct the "rc" command to send to the drone.
             cmd = "rc {} {} {} {}".format(self.__rc_right, self.__rc_forward, self.__rc_up, self.__rc_yaw)
 
             # Send the command.
             self.__send_command(cmd, expect_response=False)
 
-    def __process_state_messages(self):
+    def __process_state_messages(self) -> None:
         """Process state messages sent by the drone."""
         # While the drone should not terminate:
         while not self.__should_terminate:
@@ -261,7 +261,7 @@ class Tello:
                     self.__state_map = dict(chunks)
 
     # noinspection PyUnresolvedReferences
-    def __process_video_messages(self):
+    def __process_video_messages(self) -> None:
         """Process video messages sent by the drone."""
         # Tell PyAV not to print out any non-fatal logging messages (it's quite verbose otherwise).
         av.logging.set_level(av.logging.FATAL)
@@ -332,15 +332,15 @@ class Tello:
         :param expect_response: Whether or not we should expect a response from the drone (no for "rc" messages).
         """
         with self.__cmd_lock:
-            # Wait for any pending response to a previous command to be received from the Tello.
+            # Wait for any pending response to a previous command to be received from the drone.
             while self.__response_is_pending:
                 self.__no_pending_response.wait(0.1)
 
-                # If this unblocks because the Tello should terminate, exit.
+                # If this unblocks because the drone should terminate, exit.
                 if self.__should_terminate:
                     return
 
-            # Send the command to the Tello.
+            # Send the command to the drone.
             self.__cmd_link.socket.sendto(bytes(cmd, "utf-8"), self.__cmd_link.remote_endpoint)
 
             # Print the command that was sent, if desired.
