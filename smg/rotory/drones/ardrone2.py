@@ -34,6 +34,7 @@ class ARDrone2:
                  control_endpoint: Tuple[str, int] = ("192.168.1.1", 5559),
                  local_ip: str = "192.168.1.2",
                  navdata_endpoint: Tuple[str, int] = ("192.168.1.1", 5554),
+                 print_commands: bool = True,
                  print_control_messages: bool = True,
                  print_navdata_messages: bool = False,
                  video_endpoint: Tuple[str, int] = ("192.168.1.1", 5555)):
@@ -43,6 +44,7 @@ class ARDrone2:
         :param cmd_endpoint:            The remote endpoint (IP address and port) to which to send AT commands.
         :param control_endpoint:        The remote endpoint (IP address and port) from which to receive critical data.
         :param navdata_endpoint:        The remote endpoint (IP address and port) from which to receive navigation data.
+        :param print_commands:          Whether or not to print commands that are sent.
         :param print_control_messages:  Whether or not to print control messages.
         :param print_navdata_messages:  Whether or not to print navdata messages.
         :param video_endpoint:          The remote endpoint (IP address and port) from which to receive video.
@@ -51,6 +53,7 @@ class ARDrone2:
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
         self.__pave_header_fmt: str = "4sBBHIHHHHIIBBBBIIHBBBB2sI12s"
         self.__pave_header_size: int = struct.calcsize(self.__pave_header_fmt)
+        self.__print_commands: bool = print_commands
         self.__print_control_messages: bool = print_control_messages
         self.__print_navdata_messages: bool = print_navdata_messages
         self.__sequence_number: int = 1
@@ -246,19 +249,28 @@ class ARDrone2:
 
     def __send_command(self, name: str, *args) -> None:
         """
-        TODO
+        Send the specified command to the drone.
 
-        :param name:    TODO
-        :param args:    TODO
+        .. note::
+            It is essential that the arguments passed in to this function have the right types, since the types
+            are used internally to format the arguments ready for sending across to the drone. For example,
+            it would be really bad to pass in a whole number as an int rather than a float for an argument
+            that's supposed to be floating-point, since ints and floats are processed differently prior to
+            being sent across to the drone (see https://jpchanson.github.io/ARdrone/ParrotDevGuide.pdf).
+
+        :param name:    The name of the command to send.
+        :param args:    The arguments to the command.
         """
         with self.__cmd_lock:
-            # Send the command to the drone.
+            # Make the command and send it to the drone.
             cmd: bytes = ARDrone2.__make_at_command(name, self.__sequence_number, *args)
             self.__cmd_link.socket.sendto(cmd, self.__cmd_link.remote_endpoint)
+
+            # Update the sequence number ready for the next command.
             self.__sequence_number += 1
 
             # Print the command that was sent, if desired.
-            if True:
+            if self.__print_commands:
                 print(f"Sent Command: {cmd}")
 
     # PRIVATE STATIC METHODS
