@@ -278,10 +278,10 @@ class ARDrone2:
     @staticmethod
     def __get_at_arg_count(name: str) -> int:
         """
-        TODO
+        Get the number of arguments accepted by an AT command with the specified name.
 
-        :param name:    TODO
-        :return:        TODO
+        :param name:    The name of the AT command.
+        :return:        The number of arguments that the AT command accepts.
         """
         arg_counts: Dict[str, int] = {
             "CALIB": 2,
@@ -305,12 +305,12 @@ class ARDrone2:
     @staticmethod
     def __make_at_command(name: str, sequence_number: int, *args) -> bytes:
         """
-        TODO
+        Make an AT command to send to the drone.
 
-        :param name:                TODO
-        :param sequence_number:     TODO
-        :param args:                TODO
-        :return:                    TODO
+        :param name:                The name of the command.
+        :param sequence_number:     The sequence number to embed in the command.
+        :param args:                The arguments to the command.
+        :return:                    The command.
         """
         modified_args: List[str] = []
 
