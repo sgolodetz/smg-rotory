@@ -7,7 +7,8 @@ import threading
 import time
 
 from collections import namedtuple
-from typing import Dict, List, Tuple
+from distutils.util import strtobool
+from typing import Dict, List, Optional, Tuple
 
 from smg.rotory.net.udp_link import UDPLink
 
@@ -49,6 +50,7 @@ class ARDrone2:
         :param print_navdata_messages:  Whether or not to print navdata messages.
         :param video_endpoint:          The remote endpoint (IP address and port) from which to receive video.
         """
+        self.__drone_state: str = ""
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
         self.__pave_header_fmt: str = "4sBBHIHHHHIIBBBBIIHBBBB2sI12s"
@@ -61,6 +63,7 @@ class ARDrone2:
 
         # Set up the locks and conditions.
         self.__cmd_lock = threading.Lock()
+        self.__navdata_lock = threading.Lock()
         self.__video_lock = threading.Lock()
 
         self.__no_pending_frame = threading.Condition(self.__video_lock)
@@ -127,6 +130,19 @@ class ARDrone2:
 
     # PRIVATE METHODS
 
+    def __get_drone_state_bit(self, bit: int) -> Optional[bool]:
+        """
+        TODO
+
+        :param bit: TODO
+        :return:    TODO
+        """
+        with self.__navdata_lock:
+            if len(self.__drone_state) == 32 and 0 <= bit < 32:
+                return bool(strtobool(self.__drone_state[bit]))
+            else:
+                return None
+
     def __process_control_messages(self) -> None:
         """Process control messages sent by the drone."""
         # While the drone should not terminate.
@@ -175,6 +191,19 @@ class ARDrone2:
             # Print the navdata message that was sent, if desired.
             if self.__print_navdata_messages:
                 print(f"NavData Message: {navdata_message}")
+
+            # Try to process the navdata message. If anything goes wrong, simply print a warning and skip it.
+            if len(navdata_message) >= 16:
+                header, drone_state, sequence_number, vision_flag = struct.unpack("iiii", navdata_message[:16])
+                if header == 0x55667788:
+                    # Convert the 32-bit drone state to a binary string, with the low bits first. The meaning
+                    # of each bit can be found in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h.
+                    with self.__navdata_lock:
+                        self.__drone_state = f"{drone_state:032b}"[::-1]
+                else:
+                    print("Warning: Incoming navdata message had a bad header; skipping")
+            else:
+                print("Warning: Incoming navdata message was too short; skipping")
 
     # noinspection PyUnresolvedReferences
     def __process_video_messages(self) -> None:
