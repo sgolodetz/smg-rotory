@@ -86,6 +86,9 @@ class ARDrone2:
         # Request the current drone configuration.
         self.__send_command("CTRL", 4, 0)
 
+        # Ask the drone to start sending full navdata messages.
+        self.__send_command("CONFIG", "general:navdata_demo", "FALSE")
+
     # SPECIAL METHODS
 
     def __enter__(self):
