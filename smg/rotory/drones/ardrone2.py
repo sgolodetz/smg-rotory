@@ -89,6 +89,10 @@ class ARDrone2:
         # Ask the drone to start sending full navdata messages.
         self.__send_command("CONFIG", "general:navdata_demo", "FALSE")
 
+        # Reset the drone control mode.
+        self.__send_command("CTRL", 5, 0)
+        self.__send_command("CTRL", 0, 0)
+
     # SPECIAL METHODS
 
     def __enter__(self):
@@ -129,7 +133,7 @@ class ARDrone2:
         while not self.__should_terminate:
             # Attempt to receive a control message from the drone.
             try:
-                control_message = self.__control_socket.recv(4096)
+                control_message = self.__control_socket.recv(32768)
             except socket.timeout:
                 control_message = b"timeout"
 
