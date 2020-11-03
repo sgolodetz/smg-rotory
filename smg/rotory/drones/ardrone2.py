@@ -37,7 +37,7 @@ class ARDrone2:
                  navdata_endpoint: Tuple[str, int] = ("192.168.1.1", 5554),
                  print_commands: bool = True,
                  print_control_messages: bool = True,
-                 print_navdata_messages: bool = False,
+                 print_navdata_messages: bool = True,
                  video_endpoint: Tuple[str, int] = ("192.168.1.1", 5555)):
         """
         Construct an ARDrone2 object, which provides a convenient interface to control a Parrot AR Drone 2.
@@ -134,38 +134,49 @@ class ARDrone2:
 
     def land(self):
         """Tell the drone to land."""
+        # Try to get the initial flying state. If we can't get the state, or the drone's already landed, early out.
+        flying: Optional[bool] = self.__get_drone_state_bit(0)
+        if flying is None or not flying:
+            return
+
+        # Make the argument to the REF command that's used to tell the drone to land.
         bits: List[str] = list("0" * 32)
         bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
-        bit_string: str = "".join(bits)
-        print(ARDrone2.__make_at_command("REF", -1, ARDrone2.__convert_bit_string_to_int32(bit_string)))
+        arg: int = ARDrone2.__convert_bit_string_to_int32("".join(bits))
 
-        # flying: bool = self.__get_drone_state_bit(0)
-        # while flying:
-        #     # TODO
-        #
-        #     # Sleep for 30 milliseconds.
-        #     time.sleep(0.03)
-        #
-        #     # TODO
-        #     flying = self.__get_drone_state_bit(0)
+        # Until the drone has landed (or program termination has been requested):
+        while flying and not self.__should_terminate:
+            # Send the landing command.
+            self.__send_command("REF", arg)
+
+            # Sleep for 30 milliseconds.
+            time.sleep(0.03)
+
+            # Check whether the drone's flying state has changed to reflect the landing.
+            flying = self.__get_drone_state_bit(0)
 
     def takeoff(self):
         """Tell the drone to take off."""
+        # Try to get the initial flying state. If we can't get the state, or the drone's already flying, early out.
+        flying: Optional[bool] = self.__get_drone_state_bit(0)
+        if flying is None or flying:
+            return
+
+        # Make the argument to the REF command that's used to tell the drone to take off.
         bits: List[str] = list("0" * 32)
         bits[9] = bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
-        bit_string: str = "".join(bits)
-        print(ARDrone2.__make_at_command("REF", -1, ARDrone2.__convert_bit_string_to_int32(bit_string)))
+        arg: int = ARDrone2.__convert_bit_string_to_int32("".join(bits))
 
-        # flying: bool = self.__get_drone_state_bit(0)
-        # while not flying:
-        #     # TODO
-        #     # self.__send_command()
-        #
-        #     # Sleep for 30 milliseconds.
-        #     time.sleep(0.03)
-        #
-        #     # TODO
-        #     flying = self.__get_drone_state_bit(0)
+        # Until the drone has taken off (or program termination has been requested):
+        while not flying and not self.__should_terminate:
+            # Send the takeoff command.
+            self.__send_command("REF", arg)
+
+            # Sleep for 30 milliseconds.
+            time.sleep(0.03)
+
+            # Check whether the drone's flying state has changed to reflect the takeoff.
+            flying = self.__get_drone_state_bit(0)
 
     # PRIVATE METHODS
 
