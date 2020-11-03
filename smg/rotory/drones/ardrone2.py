@@ -482,3 +482,60 @@ class ARDrone2:
         sock.connect(endpoint)
         sock.settimeout(timeout)
         return sock
+
+    @staticmethod
+    def unpack_navdata_options(navdata_message: bytes) -> None:
+        """
+        TODO
+
+        .. note::
+            The various tags are listed in ARDrone_SDK_2_0_1\ARDroneLib\Soft\Common\navdata_keys.h, and the
+            corresponding structs are listed in ARDrone_SDK_2_0_1\ARDroneLib\Soft\Common\navdata_common.h.
+            Note that the various macros in navdata_keys.h get redefined in navdata.c (specifically, in the
+            ardrone_navdata_unpack_all function), so that's why they're confusingly defined as empty in the
+            header file. For clarity here, the various options are:
+
+            0: NAVDATA_DEMO_TAG (size 148)
+            1: NAVDATA_TIME_TAG (size 8)
+            2: NAVDATA_RAW_MEASURES_TAG (size 52)
+            3: NAVDATA_PHYS_MEASURES_TAG (size 46)
+            4: NAVDATA_GYROS_OFFSETS_TAG (size 16)
+            5: NAVDATA_EULER_ANGLES_TAG (size 12)
+            NAVDATA_REFERENCES_TAG
+            NAVDATA_TRIMS_TAG
+            NAVDATA_RC_REFERENCES_TAG
+            NAVDATA_PWM_TAG
+            NAVDATA_ALTITUDE_TAG
+            NAVDATA_VISION_RAW_TAG
+            NAVDATA_VISION_OF_TAG
+            NAVDATA_VISION_TAG
+            NAVDATA_VISION_PERF_TAG
+            NAVDATA_TRACKERS_SEND_TAG
+            NAVDATA_VISION_DETECT_TAG
+            NAVDATA_WATCHDOG_TAG
+            NAVDATA_ADC_DATA_FRAME_TAG
+            NAVDATA_VIDEO_STREAM_TAG
+            NAVDATA_GAMES_TAG
+            NAVDATA_PRESSURE_RAW_TAG
+            NAVDATA_MAGNETO_TAG
+            NAVDATA_WIND_TAG
+            NAVDATA_KALMAN_PRESSURE_TAG
+            NAVDATA_HDVIDEO_STREAM_TAG
+            NAVDATA_WIFI_TAG
+            NAVDATA_ZIMMU_3000_TAG
+            -1: NAVDATA_CKS_TAG (size 8)
+
+        :param navdata_message:     TODO
+        """
+        # FIXME: Make this private.
+        # TODO
+        offset: int = 16
+
+        # TODO
+        while offset < len(navdata_message) - 4:
+            tag, size = struct.unpack_from("hh", navdata_message, offset)
+            print(tag, size)
+            if offset + size <= len(navdata_message):
+                data = navdata_message[offset+4:offset+size]
+                # print(data)
+            offset += size
