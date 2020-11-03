@@ -134,9 +134,17 @@ class ARDrone2:
 
     def land(self):
         """Tell the drone to land."""
-        # Try to get the initial flying state. If we can't get the state, or the drone's already landed, early out.
-        flying: Optional[bool] = self.__get_drone_state_bit(0)
-        if flying is None or not flying:
+        # Try to get the initial flying state.
+        flying: Optional[bool] = None
+        while flying is None:
+            flying = self.__get_drone_state_bit(0)
+
+            # If the drone terminates before we manage to get the initial flying state, early out.
+            if self.__should_terminate:
+                return
+
+        # If the drone's already landed, early out.
+        if not flying:
             return
 
         # Make the argument to the REF command that's used to tell the drone to land.
@@ -157,9 +165,17 @@ class ARDrone2:
 
     def takeoff(self):
         """Tell the drone to take off."""
-        # Try to get the initial flying state. If we can't get the state, or the drone's already flying, early out.
-        flying: Optional[bool] = self.__get_drone_state_bit(0)
-        if flying is None or flying:
+        # Try to get the initial flying state.
+        flying: Optional[bool] = None
+        while flying is None:
+            flying = self.__get_drone_state_bit(0)
+
+            # If the drone terminates before we manage to get the initial flying state, early out.
+            if self.__should_terminate:
+                return
+
+        # If the drone's already flying, early out.
+        if flying:
             return
 
         # Make the argument to the REF command that's used to tell the drone to take off.
