@@ -198,7 +198,7 @@ class ARDrone2:
 
     def __get_drone_state_bit(self, bit: int) -> Optional[bool]:
         """
-        TODO
+        Get the specified bit from the most recent drone state retrieved from the navdata (if any).
 
         .. note::
             The drone state is stored as a 32-bit binary string, with the low bits first.
@@ -213,9 +213,11 @@ class ARDrone2:
              20: WIND MASK; 21: Ultrasonic sensor; 22: Cutout system detection; 23: PIC Version number OK;
              24: ATCodec thread ON; 25: Navdata thread ON; 26: Video thread ON; 27: Acquisition thread ON;
              28: CTRL watchdog; 29: ADC Watchdog; 30: Communication Watchdog; 31: Emergency landing
+        .. note::
+            Prior to the drone state having been retrieved for the first time, this function will return None.
 
-        :param bit: TODO
-        :return:    TODO
+        :param bit: The index of the bit to get (must be between 0 and 31, inclusive).
+        :return:    The specified bit from the drone state, if possible, or None otherwise.
         """
         with self.__navdata_lock:
             if len(self.__drone_state) == 32 and 0 <= bit < 32:
