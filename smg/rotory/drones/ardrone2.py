@@ -110,8 +110,9 @@ class ARDrone2:
         # TODO: Check whether this is really necessary in Python, given that we're using condition timeouts.
 
         # Wait for all of the threads to terminate.
-        self.__navdata_thread.join()
         self.__control_thread.join()
+        self.__heartbeat_thread.join()
+        self.__navdata_thread.join()
         self.__video_thread.join()
 
     # PUBLIC METHODS
