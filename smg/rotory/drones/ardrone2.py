@@ -96,6 +96,9 @@ class ARDrone2:
         self.__send_command("CTRL", 5, 0)
         self.__send_command("CTRL", 0, 0)
 
+        # Trim the drone prior to takeoff.
+        self.__send_command("FTRIM")
+
     # SPECIAL METHODS
 
     def __enter__(self):
@@ -129,11 +132,60 @@ class ARDrone2:
 
             return self.__front_buffer.copy()
 
+    def land(self):
+        """Tell the drone to land."""
+        bits: List[str] = list("0" * 32)
+        bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
+        bit_string: str = "".join(bits)
+        print(ARDrone2.__make_at_command("REF", -1, ARDrone2.__convert_bit_string_to_int32(bit_string)))
+
+        # flying: bool = self.__get_drone_state_bit(0)
+        # while flying:
+        #     # TODO
+        #
+        #     # Sleep for 30 milliseconds.
+        #     time.sleep(0.03)
+        #
+        #     # TODO
+        #     flying = self.__get_drone_state_bit(0)
+
+    def takeoff(self):
+        """Tell the drone to take off."""
+        bits: List[str] = list("0" * 32)
+        bits[9] = bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
+        bit_string: str = "".join(bits)
+        print(ARDrone2.__make_at_command("REF", -1, ARDrone2.__convert_bit_string_to_int32(bit_string)))
+
+        # flying: bool = self.__get_drone_state_bit(0)
+        # while not flying:
+        #     # TODO
+        #     # self.__send_command()
+        #
+        #     # Sleep for 30 milliseconds.
+        #     time.sleep(0.03)
+        #
+        #     # TODO
+        #     flying = self.__get_drone_state_bit(0)
+
     # PRIVATE METHODS
 
     def __get_drone_state_bit(self, bit: int) -> Optional[bool]:
         """
         TODO
+
+        .. note::
+            The drone state is stored as a 32-bit binary string, with the low bits first.
+        .. note::
+             The detailed meaning of each bit can be found in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h.
+
+             0: FLY MASK; 1: VIDEO MASK; 2: VISION MASK; 3: CONTROL ALGO;
+             4: ALTITUDE CONTROL ALGO; 5: USER feedback; 6: Control command ACK; 7: Camera enable;
+             8: Travelling enable; 9: USB key; 10: Navdata demo; 11: Navdata bootstrap;
+             12: Motors status; 13: Communication Lost; 14: <Not used>; 15: VBat low;
+             16: User Emergency Landing; 17: Timer elapsed; 18: Magnetometer calibration state; 19: Angles;
+             20: WIND MASK; 21: Ultrasonic sensor; 22: Cutout system detection; 23: PIC Version number OK;
+             24: ATCodec thread ON; 25: Navdata thread ON; 26: Video thread ON; 27: Acquisition thread ON;
+             28: CTRL watchdog; 29: ADC Watchdog; 30: Communication Watchdog; 31: Emergency landing
 
         :param bit: TODO
         :return:    TODO
@@ -197,10 +249,9 @@ class ARDrone2:
             if len(navdata_message) >= 16:
                 header, drone_state, sequence_number, vision_flag = struct.unpack("iiii", navdata_message[:16])
                 if header == 0x55667788:
-                    # Convert the 32-bit drone state to a binary string, with the low bits first. The meaning
-                    # of each bit can be found in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/config.h.
+                    # Convert the 32-bit drone state to a 32-bit binary string, with the low bits first.
                     with self.__navdata_lock:
-                        self.__drone_state = f"{drone_state:032b}"[::-1]
+                        self.__drone_state = ARDrone2.__convert_int32_to_bit_string(drone_state)
                 else:
                     print("Warning: Incoming navdata message had a bad header; skipping")
             else:
@@ -311,6 +362,32 @@ class ARDrone2:
                 print(f"Sent Command: {cmd}")
 
     # PRIVATE STATIC METHODS
+
+    @staticmethod
+    def __convert_bit_string_to_int32(s: str) -> int:
+        """
+        Convert a 32-bit binary string, stored with the low bits first, to a 32-bit int.
+
+        .. note::
+            As an example, "00110000000000000000000000000000" gets converted to 12.
+
+        :param s:   The 32-bit string.
+        :return:    The 32-bit int.
+        """
+        return int(s[::-1], 2)
+
+    @staticmethod
+    def __convert_int32_to_bit_string(i: int) -> str:
+        """
+        Convert a 32-bit int to a 32-bit binary string, with the low bits first.
+
+        .. note::
+            As an example, 12 gets converted to "00110000000000000000000000000000".
+
+        :param i:   The 32-bit int.
+        :return:    The 32-bit string.
+        """
+        return f"{i:032b}"[::-1]
 
     @staticmethod
     def __get_at_arg_count(name: str) -> int:
