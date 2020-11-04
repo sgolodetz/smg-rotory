@@ -489,8 +489,8 @@ class ARDrone2:
         TODO
 
         .. note::
-            The various tags are listed in ARDrone_SDK_2_0_1\ARDroneLib\Soft\Common\navdata_keys.h, and the
-            corresponding structs are listed in ARDrone_SDK_2_0_1\ARDroneLib\Soft\Common\navdata_common.h.
+            The various tags are listed in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/navdata_keys.h, and the
+            corresponding structs are listed in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/navdata_common.h.
             Note that the various macros in navdata_keys.h get redefined in navdata.c (specifically, in the
             ardrone_navdata_unpack_all function), so that's why they're confusingly defined as empty in the
             header file. For clarity here, the various options are:
@@ -501,28 +501,28 @@ class ARDrone2:
             3: NAVDATA_PHYS_MEASURES_TAG (size 46)
             4: NAVDATA_GYROS_OFFSETS_TAG (size 16)
             5: NAVDATA_EULER_ANGLES_TAG (size 12)
-            NAVDATA_REFERENCES_TAG
-            NAVDATA_TRIMS_TAG
-            NAVDATA_RC_REFERENCES_TAG
-            NAVDATA_PWM_TAG
-            NAVDATA_ALTITUDE_TAG
-            NAVDATA_VISION_RAW_TAG
-            NAVDATA_VISION_OF_TAG
-            NAVDATA_VISION_TAG
-            NAVDATA_VISION_PERF_TAG
-            NAVDATA_TRACKERS_SEND_TAG
-            NAVDATA_VISION_DETECT_TAG
-            NAVDATA_WATCHDOG_TAG
-            NAVDATA_ADC_DATA_FRAME_TAG
-            NAVDATA_VIDEO_STREAM_TAG
-            NAVDATA_GAMES_TAG
-            NAVDATA_PRESSURE_RAW_TAG
-            NAVDATA_MAGNETO_TAG
-            NAVDATA_WIND_TAG
-            NAVDATA_KALMAN_PRESSURE_TAG
-            NAVDATA_HDVIDEO_STREAM_TAG
-            NAVDATA_WIFI_TAG
-            NAVDATA_ZIMMU_3000_TAG
+            6: NAVDATA_REFERENCES_TAG (size 88)
+            7: NAVDATA_TRIMS_TAG (size 16)
+            8: NAVDATA_RC_REFERENCES_TAG (size 24)
+            NAVDATA_PWM_TAG [SIZE IS 76, SEEMS WRONG]
+            10: NAVDATA_ALTITUDE_TAG (size 56) [SIZE SEEMS RIGHT, BUT COULD BE CONFUSED WITH NAVDATA_WIND_TAG]
+            11: NAVDATA_VISION_RAW_TAG (size 16)
+            12: NAVDATA_VISION_OF_TAG (size 44)
+            13: NAVDATA_VISION_TAG (size 92)
+            14: NAVDATA_VISION_PERF_TAG (size 108)
+            15: NAVDATA_TRACKERS_SEND_TAG (size 364)
+            16: NAVDATA_VISION_DETECT_TAG (size 328)
+            17: NAVDATA_WATCHDOG_TAG (size 8)
+            18: NAVDATA_ADC_DATA_FRAME_TAG (size 40)
+            19: NAVDATA_VIDEO_STREAM_TAG (size 65)
+            20: NAVDATA_GAMES_TAG (size 12)
+            21: NAVDATA_PRESSURE_RAW_TAG (size 18)
+            NAVDATA_MAGNETO_TAG [SIZE IS 75, SEEMS WRONG]
+            NAVDATA_WIND_TAG [SIZE IS 56, SEEMS WRONG, COULD BE CONFUSED WITH #10]
+            24: NAVDATA_KALMAN_PRESSURE_TAG (size 72)
+            25: NAVDATA_HDVIDEO_STREAM_TAG (size 32)
+            26: NAVDATA_WIFI_TAG (size 8)
+            NAVDATA_ZIMMU_3000_TAG [SIZE IS 12, SEEMS WRONG, COULD BE CONFUSED WITH #20]
             -1: NAVDATA_CKS_TAG (size 8)
 
         :param navdata_message:     TODO
