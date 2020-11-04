@@ -54,6 +54,7 @@ class ARDrone2:
         self.__drone_state: str = ""
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
+        self.__navdata_is_available: bool = False
         self.__navdata_options: Dict[str, bytes] = {}
         self.__pave_header_fmt: str = "4sBBHIHHHHIIBBBBIIHBBBB2sI12s"
         self.__pave_header_size: int = struct.calcsize(self.__pave_header_fmt)
@@ -68,6 +69,7 @@ class ARDrone2:
         self.__navdata_lock = threading.Lock()
         self.__video_lock = threading.Lock()
 
+        self.__navdata_ready = threading.Condition(self.__navdata_lock)
         self.__no_pending_frame = threading.Condition(self.__video_lock)
 
         # Set up the TCP connections.
@@ -98,6 +100,11 @@ class ARDrone2:
         self.__send_command("CTRL", 5, 0)
         self.__send_command("CTRL", 0, 0)
 
+        # Wait for the navdata to become available.
+        with self.__navdata_lock:
+            while not self.__navdata_is_available and not self.__should_terminate:
+                self.__navdata_ready.wait(0.1)
+
         # Trim the drone prior to takeoff.
         self.__send_command("FTRIM")
 
@@ -110,9 +117,6 @@ class ARDrone2:
     def __exit__(self, exception_type, exception_value, traceback):
         """Destroy the drone object at the end of the with statement that's used to manage its lifetime."""
         self.__should_terminate = True
-
-        # Artificially wake any waiting threads so that they can terminate.
-        # TODO: Check whether this is really necessary in Python, given that we're using condition timeouts.
 
         # Wait for all of the threads to terminate.
         self.__control_thread.join()
@@ -143,6 +147,21 @@ class ARDrone2:
         """
         with self.__navdata_lock:
             return self.__navdata_options.get(name)
+
+    def get_time(self) -> Optional[Tuple[int, int]]:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        time_option: Optional[bytes] = self.get_navdata_option("time")
+        if time_option is not None and len(time_option) == 4:
+            time_bits: str = f"{struct.unpack('i', time_option)[0]:032b}"
+            secs: int = BitsUtil.convert_hilo_bit_string_to_int32(time_bits[:11])
+            microsecs: int = BitsUtil.convert_hilo_bit_string_to_int32(time_bits[11:])
+            return secs, microsecs
+        else:
+            return None
 
     def land(self):
         """Tell the drone to land."""
@@ -290,10 +309,16 @@ class ARDrone2:
             if len(navdata_message) >= 16:
                 header, drone_state, sequence_number, vision_flag = struct.unpack("iiii", navdata_message[:16])
                 if header == 0x55667788:
-                    # Convert the 32-bit drone state to a 32-bit binary string, with the low bits first.
                     with self.__navdata_lock:
+                        # Convert the 32-bit drone state to a 32-bit binary string, with the low bits first.
                         self.__drone_state = BitsUtil.convert_int32_to_lohi_bit_string(drone_state)
+
+                        # Unpack the navdata options.
                         self.__navdata_options = ARDrone2.unpack_navdata_options(navdata_message)
+
+                        # Signal that the navdata is available.
+                        self.__navdata_is_available = True
+                        self.__navdata_ready.notify()
                 else:
                     print("Warning: Incoming navdata message had a bad header; skipping")
             else:
