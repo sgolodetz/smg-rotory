@@ -52,6 +52,7 @@ class ARDrone2(Drone):
         :param print_navdata_messages:  Whether or not to print navdata messages.
         :param video_endpoint:          The remote endpoint (IP address and port) from which to receive video.
         """
+        self.__current_camera: int = 0  # denotes the horizontal camera
         self.__drone_state: str = ""
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
@@ -178,6 +179,13 @@ class ARDrone2(Drone):
 
             # Check whether the drone's flying state has changed to reflect the landing.
             flying = self.__get_drone_state_bit(0)
+
+    def switch_camera(self) -> None:
+        """
+        Switch between the horizontal and vertical cameras.
+        """
+        self.__current_camera = 1 - self.__current_camera
+        self.__send_command("CONFIG", "video:video_channel", str(self.__current_camera))
 
     def takeoff(self):
         """Tell the drone to take off."""
