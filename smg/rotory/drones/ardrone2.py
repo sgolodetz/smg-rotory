@@ -10,11 +10,12 @@ from collections import namedtuple
 from distutils.util import strtobool
 from typing import Dict, List, Optional, Tuple
 
+from smg.rotory.drones.drone import Drone
 from smg.rotory.net.udp_link import UDPLink
 from smg.rotory.util.bits_util import BitsUtil
 
 
-class ARDrone2:
+class ARDrone2(Drone):
     """An interface that can be used to control a Parrot AR Drone 2."""
 
     # NESTED TYPES
@@ -128,9 +129,9 @@ class ARDrone2:
 
     def get_image(self) -> np.ndarray:
         """
-        Get the most recent image received from the Tello.
+        Get the most recent image received from the drone.
 
-        :return:    The most recent image received from the Tello.
+        :return:    The most recent image received from the drone.
         """
         with self.__video_lock:
             while self.__frame_is_pending and not self.__should_terminate:

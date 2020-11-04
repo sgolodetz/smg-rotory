@@ -1,4 +1,5 @@
 from smg.rotory.drones.ardrone2 import ARDrone2
+from smg.rotory.drones.drone import Drone
 from smg.rotory.drones.tello import Tello
 
 
@@ -8,7 +9,7 @@ class DroneFactory:
     # PUBLIC STATIC METHODS
 
     @staticmethod
-    def make_drone(drone_type: str):
+    def make_drone(drone_type: str) -> Drone:
         """
         Make a drone object of the specified type.
 

@@ -6,10 +6,11 @@ import time
 
 from typing import Dict, Mapping, Optional, Tuple
 
+from smg.rotory.drones.drone import Drone
 from smg.rotory.net.udp_link import UDPLink
 
 
-class Tello:
+class Tello(Drone):
     """An interface that can be used to control a DJI Tello drone."""
 
     # CONSTRUCTOR
