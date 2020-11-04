@@ -165,23 +165,13 @@ class ARDrone2:
 
     def land(self):
         """Tell the drone to land."""
-        # Try to get the initial flying state.
-        flying: Optional[bool] = None
-        while flying is None:
-            flying = self.__get_drone_state_bit(0)
-
-            # If the drone terminates before we manage to get the initial flying state, early out.
-            if self.__should_terminate:
-                return
-
-        # If the drone's already landed, early out.
-        if not flying:
-            return
-
         # Make the argument to the REF command that's used to tell the drone to land.
         bits: List[str] = list("0" * 32)
         bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
         arg: int = BitsUtil.convert_lohi_bit_string_to_int32("".join(bits))
+
+        # Get the initial flying state.
+        flying: bool = self.__get_drone_state_bit(0)
 
         # Until the drone has landed (or program termination has been requested):
         while flying and not self.__should_terminate:
@@ -196,23 +186,13 @@ class ARDrone2:
 
     def takeoff(self):
         """Tell the drone to take off."""
-        # Try to get the initial flying state.
-        flying: Optional[bool] = None
-        while flying is None:
-            flying = self.__get_drone_state_bit(0)
-
-            # If the drone terminates before we manage to get the initial flying state, early out.
-            if self.__should_terminate:
-                return
-
-        # If the drone's already flying, early out.
-        if flying:
-            return
-
         # Make the argument to the REF command that's used to tell the drone to take off.
         bits: List[str] = list("0" * 32)
         bits[9] = bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
         arg: int = BitsUtil.convert_lohi_bit_string_to_int32("".join(bits))
+
+        # Get the initial flying state.
+        flying: bool = self.__get_drone_state_bit(0)
 
         # Until the drone has taken off (or program termination has been requested):
         while not flying and not self.__should_terminate:
@@ -227,9 +207,9 @@ class ARDrone2:
 
     # PRIVATE METHODS
 
-    def __get_drone_state_bit(self, bit: int) -> Optional[bool]:
+    def __get_drone_state_bit(self, bit: int) -> bool:
         """
-        Get the specified bit from the most recent drone state retrieved from the navdata (if any).
+        Get the specified bit from the most recent drone state retrieved from the navdata.
 
         .. note::
             The drone state is stored as a 32-bit binary string, with the low bits first.
@@ -244,17 +224,15 @@ class ARDrone2:
              20: WIND MASK; 21: Ultrasonic sensor; 22: Cutout system detection; 23: PIC Version number OK;
              24: ATCodec thread ON; 25: Navdata thread ON; 26: Video thread ON; 27: Acquisition thread ON;
              28: CTRL watchdog; 29: ADC Watchdog; 30: Communication Watchdog; 31: Emergency landing
-        .. note::
-            Prior to the drone state having been retrieved for the first time, this function will return None.
 
         :param bit: The index of the bit to get (must be between 0 and 31, inclusive).
-        :return:    The specified bit from the drone state, if possible, or None otherwise.
+        :return:    The specified bit from the drone state.
         """
         with self.__navdata_lock:
-            if len(self.__drone_state) == 32 and 0 <= bit < 32:
+            if 0 <= bit < 32:
                 return bool(strtobool(self.__drone_state[bit]))
             else:
-                return None
+                raise ValueError(f"Cannot get bit #{bit} of the 32-bit drone state")
 
     def __process_control_messages(self) -> None:
         """Process control messages sent by the drone."""
