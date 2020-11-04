@@ -11,6 +11,7 @@ from distutils.util import strtobool
 from typing import Dict, List, Optional, Tuple
 
 from smg.rotory.net.udp_link import UDPLink
+from smg.rotory.util.bits_util import BitsUtil
 
 
 class ARDrone2:
@@ -53,7 +54,7 @@ class ARDrone2:
         self.__drone_state: str = ""
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
-        self.__navdata_options: Dict[int, bytes] = {}
+        self.__navdata_options: Dict[str, bytes] = {}
         self.__pave_header_fmt: str = "4sBBHIHHHHIIBBBBIIHBBBB2sI12s"
         self.__pave_header_size: int = struct.calcsize(self.__pave_header_fmt)
         self.__print_commands: bool = print_commands
@@ -133,6 +134,16 @@ class ARDrone2:
 
             return self.__front_buffer.copy()
 
+    def get_navdata_option(self, name: str) -> Optional[bytes]:
+        """
+        TODO
+
+        :param name:    TODO
+        :return:        TODO
+        """
+        with self.__navdata_lock:
+            return self.__navdata_options.get(name)
+
     def land(self):
         """Tell the drone to land."""
         # Try to get the initial flying state.
@@ -151,7 +162,7 @@ class ARDrone2:
         # Make the argument to the REF command that's used to tell the drone to land.
         bits: List[str] = list("0" * 32)
         bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
-        arg: int = ARDrone2.__convert_bit_string_to_int32("".join(bits))
+        arg: int = BitsUtil.convert_lohi_bit_string_to_int32("".join(bits))
 
         # Until the drone has landed (or program termination has been requested):
         while flying and not self.__should_terminate:
@@ -182,7 +193,7 @@ class ARDrone2:
         # Make the argument to the REF command that's used to tell the drone to take off.
         bits: List[str] = list("0" * 32)
         bits[9] = bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
-        arg: int = ARDrone2.__convert_bit_string_to_int32("".join(bits))
+        arg: int = BitsUtil.convert_lohi_bit_string_to_int32("".join(bits))
 
         # Until the drone has taken off (or program termination has been requested):
         while not flying and not self.__should_terminate:
@@ -281,7 +292,8 @@ class ARDrone2:
                 if header == 0x55667788:
                     # Convert the 32-bit drone state to a 32-bit binary string, with the low bits first.
                     with self.__navdata_lock:
-                        self.__drone_state = ARDrone2.__convert_int32_to_bit_string(drone_state)
+                        self.__drone_state = BitsUtil.convert_int32_to_lohi_bit_string(drone_state)
+                        self.__navdata_options = ARDrone2.unpack_navdata_options(navdata_message)
                 else:
                     print("Warning: Incoming navdata message had a bad header; skipping")
             else:
@@ -392,32 +404,6 @@ class ARDrone2:
                 print(f"Sent Command: {cmd}")
 
     # PRIVATE STATIC METHODS
-
-    @staticmethod
-    def __convert_bit_string_to_int32(s: str) -> int:
-        """
-        Convert a 32-bit binary string, stored with the low bits first, to a 32-bit int.
-
-        .. note::
-            As an example, "00110000000000000000000000000000" gets converted to 12.
-
-        :param s:   The 32-bit string.
-        :return:    The 32-bit int.
-        """
-        return int(s[::-1], 2)
-
-    @staticmethod
-    def __convert_int32_to_bit_string(i: int) -> str:
-        """
-        Convert a 32-bit int to a 32-bit binary string, with the low bits first.
-
-        .. note::
-            As an example, 12 gets converted to "00110000000000000000000000000000".
-
-        :param i:   The 32-bit int.
-        :return:    The 32-bit string.
-        """
-        return f"{i:032b}"[::-1]
 
     @staticmethod
     def __get_navdata_option_name(tag: int) -> Optional[str]:

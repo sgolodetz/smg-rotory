@@ -17,7 +17,7 @@ def main():
     # Connect to the drone, then tell it to take off, wait 5 seconds and land.
     with DroneFactory.make_drone(args.get("drone_type")) as drone:
         drone.takeoff()
-        time.sleep(10)
+        time.sleep(5)
         drone.land()
 
 
