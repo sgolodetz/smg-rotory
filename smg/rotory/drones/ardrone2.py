@@ -139,23 +139,17 @@ class ARDrone2(Drone):
 
             return self.__front_buffer.copy()
 
-    def get_navdata_option(self, name: str) -> Optional[bytes]:
-        """
-        TODO
-
-        :param name:    TODO
-        :return:        TODO
-        """
-        with self.__navdata_lock:
-            return self.__navdata_options.get(name)
-
     def get_time(self) -> Optional[Tuple[int, int]]:
         """
-        TODO
+        Try to get the time reported by the drone.
 
-        :return:    TODO
+        .. note::
+            This should always succeed, in practice, but in theory it can return None if the navdata sent by the
+            drone either (i) doesn't include a time option section, or (ii) does, but it's of the wrong size.
+
+        :return:    The time reported by the drone (if available), as a (secs, microsecs) tuple, or None otherwise.
         """
-        time_option: Optional[bytes] = self.get_navdata_option("time")
+        time_option: Optional[bytes] = self.__get_navdata_option("time")
         if time_option is not None and len(time_option) == 4:
             time_bits: str = f"{struct.unpack('i', time_option)[0]:032b}"
             secs: int = BitsUtil.convert_hilo_bit_string_to_int32(time_bits[:11])
@@ -235,6 +229,16 @@ class ARDrone2(Drone):
             else:
                 raise ValueError(f"Cannot get bit #{bit} of the 32-bit drone state")
 
+    def __get_navdata_option(self, name: str) -> Optional[bytes]:
+        """
+        Try to get the specified navdata option from the last set of navdata options retrieved from the drone.
+
+        :param name:    The name of the navdata option to get.
+        :return:        The data for the navdata option, if available, or None otherwise.
+        """
+        with self.__navdata_lock:
+            return self.__navdata_options.get(name)
+
     def __process_control_messages(self) -> None:
         """Process control messages sent by the drone."""
         # While the drone should not terminate.
@@ -293,7 +297,7 @@ class ARDrone2(Drone):
                         self.__drone_state = BitsUtil.convert_int32_to_lohi_bit_string(drone_state)
 
                         # Unpack the navdata options.
-                        self.__navdata_options = ARDrone2.unpack_navdata_options(navdata_message)
+                        self.__navdata_options = ARDrone2.__unpack_navdata_options(navdata_message)
 
                         # Signal that the navdata is available.
                         self.__navdata_is_available = True
@@ -410,9 +414,36 @@ class ARDrone2(Drone):
     # PRIVATE STATIC METHODS
 
     @staticmethod
+    def __get_at_arg_count(name: str) -> int:
+        """
+        Get the number of arguments accepted by an AT command with the specified name.
+
+        :param name:    The name of the AT command.
+        :return:        The number of arguments that the AT command accepts.
+        """
+        arg_counts: Dict[str, int] = {
+            "CALIB": 2,
+            "COMWDG": 1,
+            "CONFIG": 3,
+            "CONFIG_IDS": 4,
+            "CTRL": 3,
+            "FTRIM": 1,
+            "PCMD": 6,
+            "PCMD_MAG": 8,
+            "REF": 2
+        }
+
+        result: int = arg_counts.get(name)
+
+        if result is not None:
+            return result
+        else:
+            raise ValueError(f"Unknown command: {name}")
+
+    @staticmethod
     def __get_navdata_option_name(tag: int) -> Optional[str]:
         """
-        TODO
+        Try to get a user-friendly name for the option with the specified tag.
 
         .. note::
             The various tags are listed in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/navdata_keys.h, and the
@@ -430,7 +461,7 @@ class ARDrone2(Drone):
             6: NAVDATA_REFERENCES_TAG (size 88)
             7: NAVDATA_TRIMS_TAG (size 16)
             8: NAVDATA_RC_REFERENCES_TAG (size 24)
-            NAVDATA_PWM_TAG [SIZE IS 76, SEEMS WRONG]
+            ?: NAVDATA_PWM_TAG [SIZE IS 76, SEEMS WRONG]
             10: NAVDATA_ALTITUDE_TAG (size 56) [SIZE SEEMS RIGHT, BUT COULD BE CONFUSED WITH NAVDATA_WIND_TAG]
             11: NAVDATA_VISION_RAW_TAG (size 16)
             12: NAVDATA_VISION_OF_TAG (size 44)
@@ -443,16 +474,16 @@ class ARDrone2(Drone):
             19: NAVDATA_VIDEO_STREAM_TAG (size 65)
             20: NAVDATA_GAMES_TAG (size 12)
             21: NAVDATA_PRESSURE_RAW_TAG (size 18)
-            NAVDATA_MAGNETO_TAG [SIZE IS 75, SEEMS WRONG]
-            NAVDATA_WIND_TAG [SIZE IS 56, SEEMS WRONG, COULD BE CONFUSED WITH #10]
+            ?: NAVDATA_MAGNETO_TAG [SIZE IS 75, SEEMS WRONG]
+            ?: NAVDATA_WIND_TAG [SIZE IS 56, SEEMS WRONG, COULD BE CONFUSED WITH #10]
             24: NAVDATA_KALMAN_PRESSURE_TAG (size 72)
             25: NAVDATA_HDVIDEO_STREAM_TAG (size 32)
             26: NAVDATA_WIFI_TAG (size 8)
             NAVDATA_ZIMMU_3000_TAG [SIZE IS 12, SEEMS WRONG, COULD BE CONFUSED WITH #20]
             -1: NAVDATA_CKS_TAG (size 8)
 
-        :param tag: TODO
-        :return:    TODO
+        :param tag: An integer tag denoting a navdata option.
+        :return:    A user-friendly name for the tag, if it's one we support, or None otherwise.
         """
         return {
             0: "demo",
@@ -485,33 +516,6 @@ class ARDrone2(Drone):
             # ? : "zimmu_3000",
             -1: "cks"
         }.get(tag)
-
-    @staticmethod
-    def __get_at_arg_count(name: str) -> int:
-        """
-        Get the number of arguments accepted by an AT command with the specified name.
-
-        :param name:    The name of the AT command.
-        :return:        The number of arguments that the AT command accepts.
-        """
-        arg_counts: Dict[str, int] = {
-            "CALIB": 2,
-            "COMWDG": 1,
-            "CONFIG": 3,
-            "CONFIG_IDS": 4,
-            "CTRL": 3,
-            "FTRIM": 1,
-            "PCMD": 6,
-            "PCMD_MAG": 8,
-            "REF": 2
-        }
-
-        result: int = arg_counts.get(name)
-
-        if result is not None:
-            return result
-        else:
-            raise ValueError(f"Unknown command: {name}")
 
     @staticmethod
     def __make_at_command(name: str, sequence_number: int, *args) -> bytes:
@@ -552,34 +556,34 @@ class ARDrone2(Drone):
         return sock
 
     @staticmethod
-    def unpack_navdata_options(navdata_message: bytes) -> Dict[str, bytes]:
+    def __unpack_navdata_options(navdata_message: bytes) -> Dict[str, bytes]:
         """
-        TODO
+        Unpack the navdata options stored in a navdata message received from the drone.
 
-        :param navdata_message:     TODO
+        :param navdata_message:     The navdata message.
+        :return:                    The unpacked options, as an option name -> option data map.
         """
-        # FIXME: Make this private.
-
         navdata_options: Dict[str, bytes] = {}
 
-        # TODO
+        # The options start from byte 16 of the navdata message, as per Section 7.1.1 in the Parrot Dev Guide.
         offset: int = 16
 
-        # TODO
+        # While there are still options to unpack:
         while offset < len(navdata_message) - 4:
-            # TODO
+            # Get the option's tag (i.e. which option it is) and size, both stored as 16-bit signed shorts.
             tag, size = struct.unpack_from("hh", navdata_message, offset)
 
-            # TODO
+            # If the end of the option as advertised is within the message bounds (which should always be the case):
             if offset + size <= len(navdata_message):
-                # TODO
+                # Try to get a user-friendly name for the option.
                 name: Optional[str] = ARDrone2.__get_navdata_option_name(tag)
 
-                # TODO
+                # If a user-friendly name is available:
                 if name is not None:
+                    # Store the option and its data in the map.
                     navdata_options[name] = navdata_message[offset+4:offset+size]
 
-            # TODO
+            # Continue on to the next option.
             offset += size
 
         return navdata_options
