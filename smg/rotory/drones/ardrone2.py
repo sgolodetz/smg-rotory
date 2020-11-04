@@ -100,13 +100,13 @@ class ARDrone2:
         self.__send_command("CTRL", 5, 0)
         self.__send_command("CTRL", 0, 0)
 
+        # Trim the drone prior to takeoff.
+        self.__send_command("FTRIM")
+
         # Wait for the navdata to become available.
         with self.__navdata_lock:
             while not self.__navdata_is_available and not self.__should_terminate:
                 self.__navdata_ready.wait(0.1)
-
-        # Trim the drone prior to takeoff.
-        self.__send_command("FTRIM")
 
     # SPECIAL METHODS
 
