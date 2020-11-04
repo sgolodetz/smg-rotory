@@ -53,6 +53,7 @@ class ARDrone2:
         self.__drone_state: str = ""
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
+        self.__navdata_options: Dict[int, bytes] = {}
         self.__pave_header_fmt: str = "4sBBHIHHHHIIBBBBIIHBBBB2sI12s"
         self.__pave_header_size: int = struct.calcsize(self.__pave_header_fmt)
         self.__print_commands: bool = print_commands
@@ -419,6 +420,83 @@ class ARDrone2:
         return f"{i:032b}"[::-1]
 
     @staticmethod
+    def __get_navdata_option_name(tag: int) -> Optional[str]:
+        """
+        TODO
+
+        .. note::
+            The various tags are listed in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/navdata_keys.h, and the
+            corresponding structs are listed in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/navdata_common.h.
+            Note that the various macros in navdata_keys.h get redefined in navdata.c (specifically, in the
+            ardrone_navdata_unpack_all function), so that's why they're confusingly defined as empty in the
+            header file. For clarity here, the various options are:
+
+            0: NAVDATA_DEMO_TAG (size 148)
+            1: NAVDATA_TIME_TAG (size 8)
+            2: NAVDATA_RAW_MEASURES_TAG (size 52)
+            3: NAVDATA_PHYS_MEASURES_TAG (size 46)
+            4: NAVDATA_GYROS_OFFSETS_TAG (size 16)
+            5: NAVDATA_EULER_ANGLES_TAG (size 12)
+            6: NAVDATA_REFERENCES_TAG (size 88)
+            7: NAVDATA_TRIMS_TAG (size 16)
+            8: NAVDATA_RC_REFERENCES_TAG (size 24)
+            NAVDATA_PWM_TAG [SIZE IS 76, SEEMS WRONG]
+            10: NAVDATA_ALTITUDE_TAG (size 56) [SIZE SEEMS RIGHT, BUT COULD BE CONFUSED WITH NAVDATA_WIND_TAG]
+            11: NAVDATA_VISION_RAW_TAG (size 16)
+            12: NAVDATA_VISION_OF_TAG (size 44)
+            13: NAVDATA_VISION_TAG (size 92)
+            14: NAVDATA_VISION_PERF_TAG (size 108)
+            15: NAVDATA_TRACKERS_SEND_TAG (size 364)
+            16: NAVDATA_VISION_DETECT_TAG (size 328)
+            17: NAVDATA_WATCHDOG_TAG (size 8)
+            18: NAVDATA_ADC_DATA_FRAME_TAG (size 40)
+            19: NAVDATA_VIDEO_STREAM_TAG (size 65)
+            20: NAVDATA_GAMES_TAG (size 12)
+            21: NAVDATA_PRESSURE_RAW_TAG (size 18)
+            NAVDATA_MAGNETO_TAG [SIZE IS 75, SEEMS WRONG]
+            NAVDATA_WIND_TAG [SIZE IS 56, SEEMS WRONG, COULD BE CONFUSED WITH #10]
+            24: NAVDATA_KALMAN_PRESSURE_TAG (size 72)
+            25: NAVDATA_HDVIDEO_STREAM_TAG (size 32)
+            26: NAVDATA_WIFI_TAG (size 8)
+            NAVDATA_ZIMMU_3000_TAG [SIZE IS 12, SEEMS WRONG, COULD BE CONFUSED WITH #20]
+            -1: NAVDATA_CKS_TAG (size 8)
+
+        :param tag: TODO
+        :return:    TODO
+        """
+        return {
+            0: "demo",
+            1: "time",
+            2: "raw_measures",
+            3: "phys_measures",
+            4: "gyros_offsets",
+            5: "euler_angles",
+            6: "references",
+            7: "trims",
+            8: "rc_references",
+            # ? : "pwm",
+            10: "altitude",  # TODO: Make sure that this is correct, there's another option with the same size.
+            11: "vision_raw",
+            12: "vision_of",
+            13: "vision",
+            14: "vision_perf",
+            15: "trackers_send",
+            16: "vision_detect",
+            17: "watchdog",
+            18: "adc_data_frame",
+            19: "video_stream",
+            20: "games",
+            21: "pressure_raw",
+            # ? : "magneto",
+            # ? : "wind",
+            24: "kalman_pressure",
+            25: "hdvideo_stream",
+            26: "wifi",
+            # ? : "zimmu_3000",
+            -1: "cks"
+        }.get(tag)
+
+    @staticmethod
     def __get_at_arg_count(name: str) -> int:
         """
         Get the number of arguments accepted by an AT command with the specified name.
@@ -484,58 +562,34 @@ class ARDrone2:
         return sock
 
     @staticmethod
-    def unpack_navdata_options(navdata_message: bytes) -> None:
+    def unpack_navdata_options(navdata_message: bytes) -> Dict[str, bytes]:
         """
         TODO
-
-        .. note::
-            The various tags are listed in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/navdata_keys.h, and the
-            corresponding structs are listed in ARDrone_SDK_2_0_1/ARDroneLib/Soft/Common/navdata_common.h.
-            Note that the various macros in navdata_keys.h get redefined in navdata.c (specifically, in the
-            ardrone_navdata_unpack_all function), so that's why they're confusingly defined as empty in the
-            header file. For clarity here, the various options are:
-
-            0: NAVDATA_DEMO_TAG (size 148)
-            1: NAVDATA_TIME_TAG (size 8)
-            2: NAVDATA_RAW_MEASURES_TAG (size 52)
-            3: NAVDATA_PHYS_MEASURES_TAG (size 46)
-            4: NAVDATA_GYROS_OFFSETS_TAG (size 16)
-            5: NAVDATA_EULER_ANGLES_TAG (size 12)
-            6: NAVDATA_REFERENCES_TAG (size 88)
-            7: NAVDATA_TRIMS_TAG (size 16)
-            8: NAVDATA_RC_REFERENCES_TAG (size 24)
-            NAVDATA_PWM_TAG [SIZE IS 76, SEEMS WRONG]
-            10: NAVDATA_ALTITUDE_TAG (size 56) [SIZE SEEMS RIGHT, BUT COULD BE CONFUSED WITH NAVDATA_WIND_TAG]
-            11: NAVDATA_VISION_RAW_TAG (size 16)
-            12: NAVDATA_VISION_OF_TAG (size 44)
-            13: NAVDATA_VISION_TAG (size 92)
-            14: NAVDATA_VISION_PERF_TAG (size 108)
-            15: NAVDATA_TRACKERS_SEND_TAG (size 364)
-            16: NAVDATA_VISION_DETECT_TAG (size 328)
-            17: NAVDATA_WATCHDOG_TAG (size 8)
-            18: NAVDATA_ADC_DATA_FRAME_TAG (size 40)
-            19: NAVDATA_VIDEO_STREAM_TAG (size 65)
-            20: NAVDATA_GAMES_TAG (size 12)
-            21: NAVDATA_PRESSURE_RAW_TAG (size 18)
-            NAVDATA_MAGNETO_TAG [SIZE IS 75, SEEMS WRONG]
-            NAVDATA_WIND_TAG [SIZE IS 56, SEEMS WRONG, COULD BE CONFUSED WITH #10]
-            24: NAVDATA_KALMAN_PRESSURE_TAG (size 72)
-            25: NAVDATA_HDVIDEO_STREAM_TAG (size 32)
-            26: NAVDATA_WIFI_TAG (size 8)
-            NAVDATA_ZIMMU_3000_TAG [SIZE IS 12, SEEMS WRONG, COULD BE CONFUSED WITH #20]
-            -1: NAVDATA_CKS_TAG (size 8)
 
         :param navdata_message:     TODO
         """
         # FIXME: Make this private.
+
+        navdata_options: Dict[str, bytes] = {}
+
         # TODO
         offset: int = 16
 
         # TODO
         while offset < len(navdata_message) - 4:
+            # TODO
             tag, size = struct.unpack_from("hh", navdata_message, offset)
-            print(tag, size)
+
+            # TODO
             if offset + size <= len(navdata_message):
-                data = navdata_message[offset+4:offset+size]
-                # print(data)
+                # TODO
+                name: Optional[str] = ARDrone2.__get_navdata_option_name(tag)
+
+                # TODO
+                if name is not None:
+                    navdata_options[name] = navdata_message[offset+4:offset+size]
+
+            # TODO
             offset += size
+
+        return navdata_options
