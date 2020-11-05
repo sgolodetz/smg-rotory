@@ -22,6 +22,13 @@ class ARDrone2(Drone):
 
     # NESTED TYPES
 
+    AltitudeFields = namedtuple(
+        'AltitudeFields', [
+            'altitude_vision', 'altitude_vz', 'altitude_ref', 'altitude_raw', 'obs_accZ', 'obs_alt',
+            'obs_x_x', 'obs_x_y', 'obs_x_z', 'obs_state', 'est_vb_x', 'est_vb_y', 'est_state'
+        ]
+    )
+
     DemoFields = namedtuple(
         'DemoFields', [
             'ctrl_state', 'vbat_flying_percentage', 'theta', 'phi', 'psi', 'altitude', 'vx', 'vy', 'vz'
@@ -195,6 +202,7 @@ class ARDrone2(Drone):
             fmt: Optional[str] = None
 
             t, fmt = {
+                "altitude": (ARDrone2.AltitudeFields, "<ifiifffffIffI"),
                 "demo": (ARDrone2.DemoFields, "<IIfffifff"),
                 "euler_angles": (ARDrone2.EulerAnglesFields, "<ff"),
                 "gyros_offsets": (ARDrone2.GyrosOffsetsFields, "<fff"),
