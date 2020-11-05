@@ -20,6 +20,12 @@ class ARDrone2(Drone):
 
     # NESTED TYPES
 
+    DemoFields = namedtuple(
+        'DemoFields', [
+            'ctrl_state', 'vbat_flying_percentage', 'theta', 'phi', 'psi', 'altitude', 'vx', 'vy', 'vz'
+        ]
+    )
+
     PaVEHeader = namedtuple(
         'PaVEHeader', [
             'signature', 'version', 'video_codec', 'header_size', 'payload_size',
@@ -140,6 +146,37 @@ class ARDrone2(Drone):
 
             return self.__front_buffer.copy()
 
+    def get_navdata_option(self, name: str) -> Optional[bytes]:
+        """
+        Try to get the specified navdata option from the last set of navdata options retrieved from the drone.
+
+        :param name:    The name of the navdata option to get.
+        :return:        The data for the navdata option, if available, or None otherwise.
+        """
+        with self.__navdata_lock:
+            return self.__navdata_options.get(name)
+
+    def get_orientation(self) -> Optional[Tuple[float, float, float]]:
+        """
+        Try to get the estimated orientation of the drone.
+
+        .. note::
+            This should always succeed, in practice, but in theory it can return None if the navdata sent by the
+            drone either (i) doesn't include a demo option section, or (ii) does, but it's of the wrong size.
+
+        :return:    The estimated orientation of the drone (if available), as a (pitch, roll, yaw) tuple
+                    (all in degrees), or None otherwise.
+        """
+        demo_option: Optional[bytes] = self.get_navdata_option("demo")
+        if demo_option is not None:  # TODO: Check the size of demo_option as well.
+            # Get the demo option fields.
+            fields: ARDrone2.DemoFields = ARDrone2.DemoFields._make(struct.unpack_from("IIfffifff", demo_option))
+
+            # Convert the angles from milli-degrees to degrees to get the pitch, roll and yaw.
+            return fields.theta / 1000, fields.phi / 1000, fields.psi / 1000
+        else:
+            return None
+
     def get_time(self) -> Optional[Tuple[int, int]]:
         """
         Try to get the time reported by the drone.
@@ -150,7 +187,7 @@ class ARDrone2(Drone):
 
         :return:    The time reported by the drone (if available), as a (secs, microsecs) tuple, or None otherwise.
         """
-        time_option: Optional[bytes] = self.__get_navdata_option("time")
+        time_option: Optional[bytes] = self.get_navdata_option("time")
         if time_option is not None and len(time_option) == 4:
             time_bits: str = f"{struct.unpack('i', time_option)[0]:032b}"
             secs: int = BitsUtil.convert_hilo_bit_string_to_int32(time_bits[:11])
@@ -236,16 +273,6 @@ class ARDrone2(Drone):
                 return bool(strtobool(self.__drone_state[bit]))
             else:
                 raise ValueError(f"Cannot get bit #{bit} of the 32-bit drone state")
-
-    def __get_navdata_option(self, name: str) -> Optional[bytes]:
-        """
-        Try to get the specified navdata option from the last set of navdata options retrieved from the drone.
-
-        :param name:    The name of the navdata option to get.
-        :return:        The data for the navdata option, if available, or None otherwise.
-        """
-        with self.__navdata_lock:
-            return self.__navdata_options.get(name)
 
     def __process_control_messages(self) -> None:
         """Process control messages sent by the drone."""
