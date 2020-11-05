@@ -115,7 +115,7 @@ class FutabaT6K:
 
         :return:    The throttle implied by the current axis values (in [-1,1]).
         """
-        return self.__output_value(2, 0, 1)
+        return self.__output_value(3, 0, 1)
 
     def get_yaw(self) -> float:
         """
@@ -123,7 +123,7 @@ class FutabaT6K:
 
         :return:    The yaw implied by the current axis values (in [-1,1]).
         """
-        return self.__output_value(3)
+        return self.__output_value(2)
 
     # PRIVATE METHODS
 

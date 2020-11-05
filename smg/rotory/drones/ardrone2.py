@@ -82,9 +82,9 @@ class ARDrone2(Drone):
                  control_endpoint: Tuple[str, int] = ("192.168.1.1", 5559),
                  local_ip: str = "192.168.1.2",
                  navdata_endpoint: Tuple[str, int] = ("192.168.1.1", 5554),
-                 print_commands: bool = True,
-                 print_control_messages: bool = True,
-                 print_navdata_messages: bool = True,
+                 print_commands: bool = False,
+                 print_control_messages: bool = False,
+                 print_navdata_messages: bool = False,
                  video_endpoint: Tuple[str, int] = ("192.168.1.1", 5555)):
         """
         Construct an ARDrone2 object, which provides a convenient interface to control a Parrot AR Drone 2.
@@ -284,8 +284,7 @@ class ARDrone2(Drone):
 
         :param rate:     The rate at which the drone should move forward (in [-1,1]).
         """
-        # TODO
-        pass
+        self.__rc_forward = rate
 
     def move_right(self, rate: float) -> None:
         """
@@ -295,8 +294,7 @@ class ARDrone2(Drone):
 
         :param rate:    The rate at which the drone should move to the right (in [-1,1]).
         """
-        # TODO
-        pass
+        self.__rc_right = rate
 
     def move_up(self, rate: float) -> None:
         """
@@ -306,8 +304,7 @@ class ARDrone2(Drone):
 
         :param rate:    The rate at which the drone should move up (in [-1,1]).
         """
-        # TODO
-        pass
+        self.__rc_up = rate
 
     def stop(self):
         """Tell the drone to stop in mid-air."""
@@ -352,8 +349,7 @@ class ARDrone2(Drone):
 
         :param rate:    The rate at which the drone should turn (in [-1,1]).
         """
-        # TODO
-        pass
+        self.__rc_yaw = rate
 
     # PRIVATE METHODS
 
@@ -410,6 +406,15 @@ class ARDrone2(Drone):
 
             # Send a COMWDG command to the drone to keep it awake.
             self.__send_command("COMWDG")
+
+            # TODO
+            flag: int = 1
+
+            # TODO
+            print(self.__rc_right, self.__rc_forward, self.__rc_up, self.__rc_yaw)
+            # print(ARDrone2.__make_at_command(
+            #     "PCMD", -1, flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
+            # )
 
     def __process_navdata_messages(self) -> None:
         """Process navdata messages sent by the drone."""
