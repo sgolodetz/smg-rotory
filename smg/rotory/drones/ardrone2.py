@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import av
 import numpy as np
 import socket
@@ -8,7 +10,7 @@ import time
 
 from collections import namedtuple
 from distutils.util import strtobool
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, NamedTuple, Optional, Tuple, Type
 
 from smg.rotory.drones.drone import Drone
 from smg.rotory.net.udp_link import UDPLink
@@ -35,6 +37,17 @@ class ARDrone2(Drone):
             'header1_size', 'header2_size', 'reserved2', 'advertised_size', 'reserved3'
         ]
     )
+
+    RawMeasuresFields = namedtuple(
+        'RawMeasuresFields', [
+            'raw_acc_x', 'raw_acc_y', 'raw_acc_z', 'raw_gyro_x', 'raw_gyro_y', 'raw_gyro_z',
+            'raw_gyro_110_x', 'raw_gyro_110_y', 'vbat_raw', 'us_debut_echo', 'us_fin_echo',
+            'us_association_echo', 'us_distance_echo', 'us_courbe_temps', 'us_courbe_valeur',
+            'us_courbe_ref', 'flag_echo_ini', 'nb_echo', 'sum_echo', 'alt_temp_raw', 'gradient'
+        ]
+    )
+
+    TimeFields = namedtuple('TimeFields', ['time'])
 
     # CONSTRUCTORS
 
@@ -160,18 +173,11 @@ class ARDrone2(Drone):
         """
         Try to get the estimated orientation of the drone.
 
-        .. note::
-            This should always succeed, in practice, but in theory it can return None if the navdata sent by the
-            drone either (i) doesn't include a demo option section, or (ii) does, but it's of the wrong size.
-
         :return:    The estimated orientation of the drone (if available), as a (pitch, roll, yaw) tuple
                     (all in degrees), or None otherwise.
         """
-        demo_option: Optional[bytes] = self.get_navdata_option("demo")
-        if demo_option is not None:  # TODO: Check the size of demo_option as well.
-            # Get the demo option fields.
-            fields: ARDrone2.DemoFields = ARDrone2.DemoFields._make(struct.unpack_from("IIfffifff", demo_option))
-
+        fields: Optional[ARDrone2.DemoFields] = self.__get_option_fields("demo")
+        if fields is not None:
             # Convert the angles from milli-degrees to degrees to get the pitch, roll and yaw.
             return fields.theta / 1000, fields.phi / 1000, fields.psi / 1000
         else:
@@ -181,15 +187,11 @@ class ARDrone2(Drone):
         """
         Try to get the time reported by the drone.
 
-        .. note::
-            This should always succeed, in practice, but in theory it can return None if the navdata sent by the
-            drone either (i) doesn't include a time option section, or (ii) does, but it's of the wrong size.
-
         :return:    The time reported by the drone (if available), as a (secs, microsecs) tuple, or None otherwise.
         """
-        time_option: Optional[bytes] = self.get_navdata_option("time")
-        if time_option is not None and len(time_option) == 4:
-            time_bits: str = f"{struct.unpack('i', time_option)[0]:032b}"
+        fields: Optional[ARDrone2.TimeFields] = self.__get_option_fields("time")
+        if fields is not None:
+            time_bits: str = f"{fields.time:032b}"
             secs: int = BitsUtil.convert_hilo_bit_string_to_int32(time_bits[:11])
             microsecs: int = BitsUtil.convert_hilo_bit_string_to_int32(time_bits[11:])
             return secs, microsecs
@@ -273,6 +275,33 @@ class ARDrone2(Drone):
                 return bool(strtobool(self.__drone_state[bit]))
             else:
                 raise ValueError(f"Cannot get bit #{bit} of the 32-bit drone state")
+
+    def __get_option_fields(self, name: str) -> Optional[NamedTuple]:
+        """
+        Try to get a navdata option's fields.
+
+        :param name:    The name of the navdata option.
+        :return:        The fields of the navdata option (if available), or None otherwise.
+        """
+        option: Optional[bytes] = self.get_navdata_option(name)
+
+        if option is not None:
+            # noinspection PyUnusedLocal
+            t: Optional[Type[NamedTuple]] = None
+            # noinspection PyUnusedLocal
+            fmt: Optional[str] = None
+
+            t, fmt = {
+                "demo": (ARDrone2.DemoFields, "IIfffifff"),
+                "time": (ARDrone2.TimeFields, "i")
+            }.get(name)
+
+            # TODO: Check the size of the data available to make sure it's as expected.
+            if t is not None and fmt is not None:
+                # noinspection PyProtectedMember
+                return t._make(struct.unpack_from(fmt, option))
+
+        return None
 
     def __process_control_messages(self) -> None:
         """Process control messages sent by the drone."""
