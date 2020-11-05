@@ -28,6 +28,10 @@ class ARDrone2(Drone):
         ]
     )
 
+    EulerAnglesFields = namedtuple('EulerAnglesFields', ['theta_a', 'phi_a'])
+
+    GyrosOffsetsFields = namedtuple('GyrosOffsetsFields', ['offset_g_x', 'offset_g_y', 'offset_g_z'])
+
     PaVEHeader = namedtuple(
         'PaVEHeader', [
             'signature', 'version', 'video_codec', 'header_size', 'payload_size',
@@ -47,7 +51,22 @@ class ARDrone2(Drone):
         ]
     )
 
+    PhysMeasuresFields = namedtuple(
+        'PhysMeasuresFields', [
+            'accs_temp', 'gyro_temp', 'phys_acc_x', 'phys_acc_y', 'phys_acc_z', 'phys_gyro_x',
+            'phys_gyro_y', 'phys_gyro_z', 'alim3V3', 'vrefEpson', 'vrefIDG'
+        ]
+    )
+
     TimeFields = namedtuple('TimeFields', ['time'])
+
+    TrimsFields = namedtuple(
+        'TrimsFields', [
+            'angular_rates_trim_r', 'euler_angles_trim_theta', 'euler_angles_trim_phi'
+        ]
+    )
+
+    WatchdogFields = namedtuple('WatchdogFields', ['watchdog'])
 
     # CONSTRUCTORS
 
@@ -159,24 +178,15 @@ class ARDrone2(Drone):
 
             return self.__front_buffer.copy()
 
-    def get_navdata_option(self, name: str) -> Optional[bytes]:
-        """
-        Try to get the specified navdata option from the last set of navdata options retrieved from the drone.
-
-        :param name:    The name of the navdata option to get.
-        :return:        The data for the navdata option, if available, or None otherwise.
-        """
-        with self.__navdata_lock:
-            return self.__navdata_options.get(name)
-
-    def get_navdata_option_fields(self, name: str) -> Optional[NamedTuple]:
+    def get_navdata_option_fields(self, option_name: str) -> Optional[NamedTuple]:
         """
         Try to get a navdata option's fields.
 
-        :param name:    The name of the navdata option.
-        :return:        The fields of the navdata option (if available), or None otherwise.
+        :param option_name: The name of the navdata option.
+        :return:            The navdata option's fields (if available), or None otherwise.
         """
-        option: Optional[bytes] = self.get_navdata_option(name)
+        with self.__navdata_lock:
+            option: Optional[bytes] = self.__navdata_options.get(option_name)
 
         if option is not None:
             # noinspection PyUnusedLocal
@@ -186,9 +196,14 @@ class ARDrone2(Drone):
 
             t, fmt = {
                 "demo": (ARDrone2.DemoFields, "<IIfffifff"),
+                "euler_angles": (ARDrone2.EulerAnglesFields, "<ff"),
+                "gyros_offsets": (ARDrone2.GyrosOffsetsFields, "<fff"),
+                "phys_measures": (ARDrone2.PhysMeasuresFields, "<fHffffffIII"),
                 "raw_measures": (ARDrone2.RawMeasuresFields, "<HHHhhhhhIHHHHHHHHHIih"),
-                "time": (ARDrone2.TimeFields, "<i")
-            }.get(name)
+                "time": (ARDrone2.TimeFields, "<i"),
+                "trims": (ARDrone2.TrimsFields, "<fff"),
+                "watchdog": (ARDrone2.WatchdogFields, "<i")
+            }.get(option_name)
 
             # TODO: Check the size of the data available to make sure it's as expected.
             if t is not None and fmt is not None:
