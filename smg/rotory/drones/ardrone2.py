@@ -260,19 +260,21 @@ class ARDrone2(Drone):
         bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
         arg: int = BitsUtil.convert_lohi_bit_string_to_int32("".join(bits))
 
-        # Get the initial flying state.
-        flying: bool = self.__get_drone_state_bit(0)
+        print(ARDrone2.__make_at_command("REF", -1, arg))
 
-        # Until the drone has landed (or program termination has been requested):
-        while flying and not self.__should_terminate:
-            # Send the landing command.
-            self.__send_command("REF", arg)
-
-            # Sleep for 30 milliseconds.
-            time.sleep(0.03)
-
-            # Check whether the drone's flying state has changed to reflect the landing.
-            flying = self.__get_drone_state_bit(0)
+        # # Get the initial flying state.
+        # flying: bool = self.__get_drone_state_bit(0)
+        #
+        # # Until the drone has landed (or program termination has been requested):
+        # while flying and not self.__should_terminate:
+        #     # Send the landing command.
+        #     self.__send_command("REF", arg)
+        #
+        #     # Sleep for 30 milliseconds.
+        #     time.sleep(0.03)
+        #
+        #     # Check whether the drone's flying state has changed to reflect the landing.
+        #     flying = self.__get_drone_state_bit(0)
 
     def move_forward(self, rate: float) -> None:
         """
@@ -328,19 +330,21 @@ class ARDrone2(Drone):
         bits[9] = bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
         arg: int = BitsUtil.convert_lohi_bit_string_to_int32("".join(bits))
 
-        # Get the initial flying state.
-        flying: bool = self.__get_drone_state_bit(0)
+        print(ARDrone2.__make_at_command("REF", -1, arg))
 
-        # Until the drone has taken off (or program termination has been requested):
-        while not flying and not self.__should_terminate:
-            # Send the takeoff command.
-            self.__send_command("REF", arg)
-
-            # Sleep for 30 milliseconds.
-            time.sleep(0.03)
-
-            # Check whether the drone's flying state has changed to reflect the takeoff.
-            flying = self.__get_drone_state_bit(0)
+        # # Get the initial flying state.
+        # flying: bool = self.__get_drone_state_bit(0)
+        #
+        # # Until the drone has taken off (or program termination has been requested):
+        # while not flying and not self.__should_terminate:
+        #     # Send the takeoff command.
+        #     self.__send_command("REF", arg)
+        #
+        #     # Sleep for 30 milliseconds.
+        #     time.sleep(0.03)
+        #
+        #     # Check whether the drone's flying state has changed to reflect the takeoff.
+        #     flying = self.__get_drone_state_bit(0)
 
     def turn(self, rate: float) -> None:
         """
