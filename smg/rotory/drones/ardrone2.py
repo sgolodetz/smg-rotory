@@ -313,43 +313,6 @@ class ARDrone2(Drone):
         self.__rc_up = 0.0
         self.__rc_yaw = 0.0
 
-    def move_forward(self, rate: float) -> None:
-        """
-        Tell the drone to move forward at the specified rate.
-
-        This can also be used to move backwards (by specifying a negative rate).
-
-        :param rate:     The rate at which the drone should move forward (in [-1,1]).
-        """
-        self.__rc_forward = rate
-
-    def move_right(self, rate: float) -> None:
-        """
-        Tell the drone to move to the right at the specified rate.
-
-        This can also be used to move to the left (by specifying a negative rate).
-
-        :param rate:    The rate at which the drone should move to the right (in [-1,1]).
-        """
-        self.__rc_right = rate
-
-    def move_up(self, rate: float) -> None:
-        """
-        Tell the drone to move up at the specified rate.
-
-        This can also be used to move down (by specifying a negative rate).
-
-        :param rate:    The rate at which the drone should move up (in [-1,1]).
-        """
-        self.__rc_up = rate
-
-    def stop(self):
-        """Tell the drone to stop in mid-air."""
-        self.__rc_forward = 0.0
-        self.__rc_right = 0.0
-        self.__rc_up = 0.0
-        self.__rc_yaw = 0.0
-
     def switch_camera(self) -> None:
         """
         Switch between the horizontal and vertical cameras.
@@ -379,14 +342,6 @@ class ARDrone2(Drone):
         #
         #     # Check whether the drone's flying state has changed to reflect the takeoff.
         #     flying = self.__get_drone_state_bit(0)
-
-    def turn(self, rate: float) -> None:
-        """
-        Tell the drone to turn at the specified rate.
-
-        :param rate:    The rate at which the drone should turn (in [-1,1]).
-        """
-        self.__rc_yaw = rate
 
     def turn(self, rate: float) -> None:
         """
