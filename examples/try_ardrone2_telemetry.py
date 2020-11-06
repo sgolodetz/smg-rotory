@@ -13,6 +13,8 @@ def main():
             print(drone.get_navdata_option_fields("hdvideo_stream"))
             print(drone.get_navdata_option_fields("phys_measures"))
             print(drone.get_navdata_option_fields("raw_measures"))
+            print(drone.get_navdata_option_fields("rc_references"))
+            print(drone.get_navdata_option_fields("references"))
             print(drone.get_navdata_option_fields("trims"))
             print(drone.get_navdata_option_fields("video_stream"))
             print(drone.get_navdata_option_fields("vision_raw"))

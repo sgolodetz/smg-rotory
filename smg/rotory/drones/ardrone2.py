@@ -56,6 +56,13 @@ class ARDrone2(Drone):
         ]
     )
 
+    PhysMeasuresFields = namedtuple(
+        'PhysMeasuresFields', [
+            'accs_temp', 'gyro_temp', 'phys_acc_x', 'phys_acc_y', 'phys_acc_z', 'phys_gyro_x',
+            'phys_gyro_y', 'phys_gyro_z', 'alim3V3', 'vrefEpson', 'vrefIDG'
+        ]
+    )
+
     RawMeasuresFields = namedtuple(
         'RawMeasuresFields', [
             'raw_acc_x', 'raw_acc_y', 'raw_acc_z', 'raw_gyro_x', 'raw_gyro_y', 'raw_gyro_z',
@@ -65,10 +72,17 @@ class ARDrone2(Drone):
         ]
     )
 
-    PhysMeasuresFields = namedtuple(
-        'PhysMeasuresFields', [
-            'accs_temp', 'gyro_temp', 'phys_acc_x', 'phys_acc_y', 'phys_acc_z', 'phys_gyro_x',
-            'phys_gyro_y', 'phys_gyro_z', 'alim3V3', 'vrefEpson', 'vrefIDG'
+    RCReferencesFields = namedtuple(
+        'RCReferencesFields', [
+            'rc_ref_pitch', 'rc_ref_roll', 'rc_ref_yaw', 'rc_ref_gaz', 'rc_ref_ag'
+        ]
+    )
+
+    ReferencesFields = namedtuple(
+        'ReferencesFields', [
+            'ref_theta', 'ref_phi', 'ref_theta_I', 'ref_phi_I', 'ref_pitch', 'ref_roll', 'ref_yaw', 'ref_psi',
+            'vx_ref', 'vy_ref', 'theta_mod', 'phi_mod', 'k_v_x', 'k_v_y', 'k_mode', 'ui_time', 'ui_theta',
+            'ui_phi', 'ui_psi', 'ui_psi_accuracy', 'ui_seq'
         ]
     )
 
@@ -231,6 +245,8 @@ class ARDrone2(Drone):
                 "hdvideo_stream": (ARDrone2.HDVideoStreamFields, "<IIIIIII"),
                 "phys_measures": (ARDrone2.PhysMeasuresFields, "<fHffffffIII"),
                 "raw_measures": (ARDrone2.RawMeasuresFields, "<HHHhhhhhIHHHHHHHHHIih"),
+                "rc_references": (ARDrone2.RCReferencesFields, "<iiiii"),
+                "references": (ARDrone2.ReferencesFields, "<iiiiiiiiffffffIfffffi"),
                 "time": (ARDrone2.TimeFields, "<i"),
                 "trims": (ARDrone2.TrimsFields, "<fff"),
                 "video_stream": (ARDrone2.VideoStreamFields, "<BIIIIfIIIiiiiiII"),
