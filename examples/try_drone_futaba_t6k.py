@@ -5,6 +5,7 @@ os.environ['PYGAME_HIDE_SUPPORT_PROMPT'] = "hide"
 import pygame
 
 from argparse import ArgumentParser
+from typing import Dict
 
 from smg.rotory.drone_factory import DroneFactory
 from smg.rotory.joysticks.futaba_t6k import FutabaT6K
@@ -37,7 +38,14 @@ def main():
     joystick.calibrate()
 
     # Use the Futaba T6K to control a drone.
-    with DroneFactory.make_drone(args.get("drone_type")) as drone:
+    kwargs: Dict[str, dict] = {
+        "ardrone2": dict(print_commands=True, print_control_messages=True, print_navdata_messages=False),
+        "tello": dict(print_commands=True, print_responses=True, print_state_messages=False)
+    }
+
+    drone_type: str = args.get("drone_type")
+
+    with DroneFactory.make_drone(drone_type, **kwargs[drone_type]) as drone:
         # Stop when both Button 0 and Button 1 on the Futaba T6K are set to their "released" state.
         while joystick.get_button(0) != 0 or joystick.get_button(1) != 0:
             for event in pygame.event.get():
