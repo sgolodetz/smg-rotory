@@ -36,8 +36,15 @@ class ARDrone2(Drone):
     )
 
     EulerAnglesFields = namedtuple('EulerAnglesFields', ['theta_a', 'phi_a'])
-
+    GamesFields = namedtuple('GamesFields', ['double_tap_counter', 'finish_line_counter'])
     GyrosOffsetsFields = namedtuple('GyrosOffsetsFields', ['offset_g_x', 'offset_g_y', 'offset_g_z'])
+
+    HDVideoStreamFields = namedtuple(
+        'HDVideoStreamFields', [
+            'hdvideo_state', 'storage_fifo_nb_packets', 'storage_fifo_size', 'usbkey_size',
+            'usbkey_freespace', 'frame_number', 'usbkey_remaining_time'
+        ]
+    )
 
     PaVEHeader = namedtuple(
         'PaVEHeader', [
@@ -46,6 +53,13 @@ class ARDrone2(Drone):
             'frame_number', 'timestamp', 'total_chunks', 'chunk_index', 'frame_type', 'control',
             'stream_byte_position_lw', 'stream_byte_position_uw', 'stream_id', 'total_slices', 'slice_index',
             'header1_size', 'header2_size', 'reserved2', 'advertised_size', 'reserved3'
+        ]
+    )
+
+    PhysMeasuresFields = namedtuple(
+        'PhysMeasuresFields', [
+            'accs_temp', 'gyro_temp', 'phys_acc_x', 'phys_acc_y', 'phys_acc_z', 'phys_gyro_x',
+            'phys_gyro_y', 'phys_gyro_z', 'alim3V3', 'vrefEpson', 'vrefIDG'
         ]
     )
 
@@ -58,10 +72,17 @@ class ARDrone2(Drone):
         ]
     )
 
-    PhysMeasuresFields = namedtuple(
-        'PhysMeasuresFields', [
-            'accs_temp', 'gyro_temp', 'phys_acc_x', 'phys_acc_y', 'phys_acc_z', 'phys_gyro_x',
-            'phys_gyro_y', 'phys_gyro_z', 'alim3V3', 'vrefEpson', 'vrefIDG'
+    RCReferencesFields = namedtuple(
+        'RCReferencesFields', [
+            'rc_ref_pitch', 'rc_ref_roll', 'rc_ref_yaw', 'rc_ref_gaz', 'rc_ref_ag'
+        ]
+    )
+
+    ReferencesFields = namedtuple(
+        'ReferencesFields', [
+            'ref_theta', 'ref_phi', 'ref_theta_I', 'ref_phi_I', 'ref_pitch', 'ref_roll', 'ref_yaw', 'ref_psi',
+            'vx_ref', 'vy_ref', 'theta_mod', 'phi_mod', 'k_v_x', 'k_v_y', 'k_mode', 'ui_time', 'ui_theta',
+            'ui_phi', 'ui_psi', 'ui_psi_accuracy', 'ui_seq'
         ]
     )
 
@@ -73,7 +94,17 @@ class ARDrone2(Drone):
         ]
     )
 
+    VideoStreamFields = namedtuple(
+        'VideoStreamFields', [
+            'quant', 'frame_size', 'frame_number', 'atcmd_ref_seq', 'atcmd_mean_ref_gap', 'atcmd_var_ref_gap',
+            'atcmd_ref_quality', 'out_bitrate', 'desired_bitrate', 'data1', 'data2', 'data3', 'data4', 'data5',
+            'tcp_queue_level', 'fifo_queue_level'
+        ]
+    )
+
+    VisionRawFields = namedtuple('VisionRawFields', ['vision_tx_raw', 'vision_ty_raw', 'vision_tz_raw'])
     WatchdogFields = namedtuple('WatchdogFields', ['watchdog'])
+    WifiFields = namedtuple('WifiFields', ['link_quality'])
 
     # CONSTRUCTORS
 
@@ -209,12 +240,19 @@ class ARDrone2(Drone):
                 "altitude": (ARDrone2.AltitudeFields, "<ifiifffffIffI"),
                 "demo": (ARDrone2.DemoFields, "<IIfffifff"),
                 "euler_angles": (ARDrone2.EulerAnglesFields, "<ff"),
+                "games": (ARDrone2.GamesFields, "<II"),
                 "gyros_offsets": (ARDrone2.GyrosOffsetsFields, "<fff"),
+                "hdvideo_stream": (ARDrone2.HDVideoStreamFields, "<IIIIIII"),
                 "phys_measures": (ARDrone2.PhysMeasuresFields, "<fHffffffIII"),
                 "raw_measures": (ARDrone2.RawMeasuresFields, "<HHHhhhhhIHHHHHHHHHIih"),
+                "rc_references": (ARDrone2.RCReferencesFields, "<iiiii"),
+                "references": (ARDrone2.ReferencesFields, "<iiiiiiiiffffffIfffffi"),
                 "time": (ARDrone2.TimeFields, "<i"),
                 "trims": (ARDrone2.TrimsFields, "<fff"),
-                "watchdog": (ARDrone2.WatchdogFields, "<i")
+                "video_stream": (ARDrone2.VideoStreamFields, "<BIIIIfIIIiiiiiII"),
+                "vision_raw": (ARDrone2.VisionRawFields, "<fff"),
+                "watchdog": (ARDrone2.WatchdogFields, "<i"),
+                "wifi": (ARDrone2.WifiFields, "<I")
             }.get(option_name)
 
             # TODO: Check the size of the data available to make sure it's as expected.
