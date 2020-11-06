@@ -48,7 +48,9 @@ class FutabaT6K:
     # SPECIAL METHODS
 
     def __repr__(self):
-        return self.__device.get_name() + ", " + repr(dict(zip(self.__mins.keys(), zip(self.__mins.values(), self.__maxs.values()))))
+        return f"{self.__device.get_name()}, " + \
+               repr(dict(zip(self.__mins.keys(), zip(self.__mins.values(), self.__maxs.values())))) + \
+               f", Pitch: {self.get_pitch()}, Roll: {self.get_roll()}, Yaw: {self.get_yaw()}"
 
     def __str__(self):
         return repr(self)
@@ -115,7 +117,7 @@ class FutabaT6K:
 
         :return:    The throttle implied by the current axis values (in [-1,1]).
         """
-        return self.__output_value(2, 0, 1)
+        return self.__output_value(3, 0, 1)
 
     def get_yaw(self) -> float:
         """
@@ -123,7 +125,7 @@ class FutabaT6K:
 
         :return:    The yaw implied by the current axis values (in [-1,1]).
         """
-        return self.__output_value(3)
+        return self.__output_value(2)
 
     # PRIVATE METHODS
 

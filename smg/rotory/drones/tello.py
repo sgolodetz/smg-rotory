@@ -126,11 +126,11 @@ class Tello(Drone):
         with self.__state_lock:
             return self.__state_map.copy()
 
-    def land(self):
+    def land(self) -> None:
         """Tell the drone to land."""
         self.__send_command("land", expect_response=True)
 
-    def move_forward(self, rate: float):
+    def move_forward(self, rate: float) -> None:
         """
         Tell the drone to move forward at the specified rate.
 
@@ -140,7 +140,7 @@ class Tello(Drone):
         """
         self.__rc_forward = Tello.__rate_to_control_value(rate)
 
-    def move_right(self, rate: float):
+    def move_right(self, rate: float) -> None:
         """
         Tell the drone to move to the right at the specified rate.
 
@@ -150,7 +150,7 @@ class Tello(Drone):
         """
         self.__rc_right = Tello.__rate_to_control_value(rate)
 
-    def move_up(self, rate: float):
+    def move_up(self, rate: float) -> None:
         """
         Tell the drone to move up at the specified rate.
 
@@ -160,17 +160,18 @@ class Tello(Drone):
         """
         self.__rc_up = Tello.__rate_to_control_value(rate)
 
-    def stop(self):
+    def stop(self) -> None:
         """Tell the drone to stop in mid-air."""
-        self.__rc_right = 0
         self.__rc_forward = 0
+        self.__rc_right = 0
+        self.__rc_up = 0
         self.__rc_yaw = 0
 
-    def takeoff(self):
+    def takeoff(self) -> None:
         """Tell the drone to take off."""
         self.__send_command("takeoff", expect_response=True)
 
-    def turn(self, rate: float):
+    def turn(self, rate: float) -> None:
         """
         Tell the drone to turn at the specified rate.
 
