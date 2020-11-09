@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import av
+import cv2
 import numpy as np
 import socket
 import struct
@@ -109,8 +110,10 @@ class ARDrone2(Drone):
     # CONSTRUCTORS
 
     def __init__(self, *,
+                 camera_matrix: Optional[np.ndarray] = None,
                  cmd_endpoint: Tuple[str, int] = ("192.168.1.1", 5556),
                  control_endpoint: Tuple[str, int] = ("192.168.1.1", 5559),
+                 dist_coeffs: Optional[np.ndarray] = None,
                  local_ip: str = "192.168.1.2",
                  navdata_endpoint: Tuple[str, int] = ("192.168.1.1", 5554),
                  print_commands: bool = True,
@@ -120,15 +123,19 @@ class ARDrone2(Drone):
         """
         Construct an ARDrone2 object, which provides a convenient interface to control a Parrot AR Drone 2.
 
+        :param camera_matrix:           An optional camera matrix to use to undistort the images.
         :param cmd_endpoint:            The remote endpoint (IP address and port) to which to send AT commands.
         :param control_endpoint:        The remote endpoint (IP address and port) from which to receive critical data.
+        :param dist_coeffs:             Optional distortion coefficients to use to undistort the images.
         :param navdata_endpoint:        The remote endpoint (IP address and port) from which to receive navigation data.
         :param print_commands:          Whether or not to print commands that are sent.
         :param print_control_messages:  Whether or not to print control messages.
         :param print_navdata_messages:  Whether or not to print navdata messages.
         :param video_endpoint:          The remote endpoint (IP address and port) from which to receive video.
         """
+        self.__camera_matrix: Optional[np.ndarray] = camera_matrix
         self.__current_camera: int = 0  # denotes the horizontal camera
+        self.__dist_coeffs: Optional[np.ndarray] = dist_coeffs
         self.__drone_state: str = ""
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
@@ -212,13 +219,22 @@ class ARDrone2(Drone):
         """
         Get the most recent image received from the drone.
 
+        .. note::
+            If a camera matrix and distortion coefficients were passed to the constructor,
+            this function will also undistort the images using these before returning it.
+
         :return:    The most recent image received from the drone.
         """
         with self.__video_lock:
             while self.__frame_is_pending and not self.__should_terminate:
                 self.__no_pending_frame.wait(0.1)
 
-            return self.__front_buffer.copy()
+            image: np.ndarray = self.__front_buffer.copy()
+
+        if self.__camera_matrix is not None and self.__dist_coeffs is not None:
+            return cv2.undistort(image, self.__camera_matrix, self.__dist_coeffs)
+        else:
+            return image
 
     def get_navdata_option_fields(self, option_name: str) -> Optional[NamedTuple]:
         """
