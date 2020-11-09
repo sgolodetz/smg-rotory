@@ -3,17 +3,35 @@ import glob
 import numpy as np
 
 from argparse import ArgumentParser
-from typing import Dict
+from typing import Dict, Optional
 
 from smg.rotory.drone_factory import DroneFactory
+
+
+def find_corners(img: np.ndarray, w: int, h: int):
+    grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    ret, corners = cv2.findChessboardCorners(grey, (w, h), None)
+    if ret:
+        criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
+        subpix_corners = cv2.cornerSubPix(grey, corners, (11, 11), (-1, -1), criteria)
+        return ret, corners, subpix_corners
+    else:
+        return None
+
+
+def make_corners_image(img: np.ndarray, w: int, h: int) -> Optional[np.ndarray]:
+    result = find_corners(img, w, h)
+    if result:
+        ret, corners, subpix_corners = result
+        return cv2.drawChessboardCorners(img, (w, h), subpix_corners, ret)
+    else:
+        return None
 
 
 def calibrate_camera(drone_type: str) -> None:
     """
     TODO
     """
-    criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
-
     w, h = 9, 6
 
     per_frame_object_points = np.zeros((h * w, 3), np.float32)
@@ -28,13 +46,11 @@ def calibrate_camera(drone_type: str) -> None:
         print(f"Processing {img_filename}...")
 
         img = cv2.imread(img_filename)
-        grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-        img_shape = grey.shape[::-1]
+        img_shape = img.shape[:2][::-1]
 
-        ret, corners = cv2.findChessboardCorners(grey, (w, h), None)
-
-        if ret:
-            subpix_corners = cv2.cornerSubPix(grey, corners, (11, 11), (-1, -1), criteria)
+        result = find_corners(img, w, h)
+        if result:
+            ret, corners, subpix_corners = result
 
             object_points.append(per_frame_object_points)
             image_points.append(subpix_corners)
@@ -62,8 +78,11 @@ def calibrate_camera(drone_type: str) -> None:
         img = cv2.imread(img_filename)
         undistorted_img = cv2.undistort(img, mtx, dist)
 
-        cv2.imshow("Image", img)
-        cv2.imshow("Undistorted Image", undistorted_img)
+        corners_img = make_corners_image(img, w, h)
+        undistorted_corners_img = make_corners_image(undistorted_img, w, h)
+
+        cv2.imshow("Image", corners_img if corners_img is not None else img)
+        cv2.imshow("Undistorted Image", undistorted_corners_img if undistorted_corners_img is not None else undistorted_img)
         if cv2.waitKey() == ord('q'):
             break
 
