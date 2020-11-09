@@ -61,10 +61,10 @@ def calibrate_camera(drone_type: str) -> None:
         else:
             print("...could not find chessboard corners")
 
+    flags: int = 0
     if drone_type == "tello":
-        flags: int = cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | cv2.CALIB_FIX_PRINCIPAL_POINT
-    else:
-        flags: int = 0
+        flags = cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | \
+                cv2.CALIB_FIX_PRINCIPAL_POINT
 
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, img_shape, None, None, flags=flags)
     print(mtx)
@@ -89,9 +89,9 @@ def calibrate_camera(drone_type: str) -> None:
 
 def save_frames(drone_type: str) -> None:
     """
-    TODO
+    Save frames from a drone for later calibration.
 
-    :param drone_type:  TODO
+    :param drone_type:  The type of drone.
     """
     kwargs: Dict[str, dict] = {
         "ardrone2": dict(print_commands=False, print_control_messages=False, print_navdata_messages=False),
@@ -125,11 +125,11 @@ def main():
     )
     parser.add_argument(
         "--mode", "-m", type=str, required=True, choices=("calibrate", "save"),
-        help="whether to save images prior to calibration, or calibrate the camera now"
+        help="whether to save images for later calibration, or calibrate the camera now"
     )
     args: dict = vars(parser.parse_args())
 
-    # Either calibrate the camera, or save images prior to calibration, depending on the mode.
+    # Either calibrate the camera, or save images for later calibration, depending on the mode.
     drone_type: str = args["drone_type"]
     if args["mode"] == "calibrate":
         calibrate_camera(drone_type)
