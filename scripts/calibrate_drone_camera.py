@@ -8,7 +8,7 @@ from typing import Dict
 from smg.rotory.drone_factory import DroneFactory
 
 
-def calibrate_camera() -> None:
+def calibrate_camera(drone_type: str) -> None:
     """
     TODO
     """
@@ -40,21 +40,32 @@ def calibrate_camera() -> None:
             image_points.append(subpix_corners)
 
             corners_img = cv2.drawChessboardCorners(img, (w, h), subpix_corners, ret)
-            # cv2.imshow("Corners ({})".format(img_filename), corners_img)
-            # cv2.waitKey()
             cv2.imshow("Corners", corners_img)
             cv2.waitKey(1)
-            # cv2.destroyAllWindows()
         else:
             print("...could not find chessboard corners")
 
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
-        object_points, image_points, img_shape, None, None,
-        # Tello only
-        # flags=cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | cv2.CALIB_FIX_PRINCIPAL_POINT
-    )
+    if drone_type == "tello":
+        flags: int = cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | cv2.CALIB_FIX_PRINCIPAL_POINT
+    else:
+        flags: int = 0
+
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, img_shape, None, None, flags=flags)
     print(mtx)
     print(dist)
+
+    cv2.destroyAllWindows()
+
+    for img_filename in img_filenames:
+        print(f"Processing {img_filename}...")
+
+        img = cv2.imread(img_filename)
+        undistorted_img = cv2.undistort(img, mtx, dist)
+
+        cv2.imshow("Image", img)
+        cv2.imshow("Undistorted Image", undistorted_img)
+        if cv2.waitKey() == ord('q'):
+            break
 
 
 def save_frames(drone_type: str) -> None:
@@ -100,10 +111,11 @@ def main():
     args: dict = vars(parser.parse_args())
 
     # Either calibrate the camera, or save images prior to calibration, depending on the mode.
+    drone_type: str = args["drone_type"]
     if args["mode"] == "calibrate":
-        calibrate_camera()
+        calibrate_camera(drone_type)
     else:
-        save_frames(args["drone_type"])
+        save_frames(drone_type)
 
 
 if __name__ == "__main__":
