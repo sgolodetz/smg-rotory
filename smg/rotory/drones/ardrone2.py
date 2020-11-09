@@ -232,8 +232,8 @@ class ARDrone2(Drone):
         Get the most recent image received from the drone.
 
         .. note::
-            If a camera matrix and distortion coefficients were passed to the constructor,
-            this function will also undistort the images using these before returning it.
+            If camera matrices and distortion coefficients were passed to the constructor,
+            this function will also undistort the image using these before returning it.
 
         :return:    The most recent image received from the drone.
         """
