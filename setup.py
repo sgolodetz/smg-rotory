@@ -17,7 +17,7 @@ setup(
     install_requires=[
         "av",
         "numpy",
-        "opencv-python",
+        "opencv-contrib-python==3.4.2.16",
         "pygame"
     ],
     classifiers=[
