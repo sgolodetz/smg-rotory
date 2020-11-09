@@ -64,13 +64,13 @@ def calibrate_camera(drone_type: str, image_dir: str) -> None:
         flags = cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | \
                 cv2.CALIB_FIX_PRINCIPAL_POINT
 
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
+    ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
         object_points, image_points, image_shape, None, None, flags=flags
     )
 
     # Print out the results of the calibration process.
-    print(mtx)
-    print(dist)
+    print(camera_matrix)
+    print(dist_coeffs)
 
     # Destroy all of the OpenCV windows we were using during the calibration.
     cv2.destroyAllWindows()
@@ -81,7 +81,7 @@ def calibrate_camera(drone_type: str, image_dir: str) -> None:
 
         # Load in the image and undistort it.
         distorted_image: np.ndarray = cv2.imread(image_filename)
-        undistorted_image: np.ndarray = cv2.undistort(distorted_image, mtx, dist)
+        undistorted_image: np.ndarray = cv2.undistort(distorted_image, camera_matrix, dist_coeffs)
 
         # Try to visualise the chessboard corners on the distorted and undistorted images.
         distorted_corners: Optional[np.ndarray] = make_corners_image(distorted_image, w, h)
