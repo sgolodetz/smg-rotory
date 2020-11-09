@@ -110,6 +110,7 @@ class ARDrone2(Drone):
     # CONSTRUCTORS
 
     def __init__(self, *,
+                 allow_default_undistort: bool = True,
                  camera_matrices: Tuple[Optional[np.ndarray], Optional[np.ndarray]] = (None, None),
                  cmd_endpoint: Tuple[str, int] = ("192.168.1.1", 5556),
                  control_endpoint: Tuple[str, int] = ("192.168.1.1", 5559),
@@ -123,6 +124,8 @@ class ARDrone2(Drone):
         """
         Construct an ARDrone2 object, which provides a convenient interface to control a Parrot AR Drone 2.
 
+        :param allow_default_undistort: Whether or not to allow the default image undistortion to happen if the user
+                                        doesn't manually specify any undistortion parameters.
         :param camera_matrices:         Optional camera matrices to use to undistort the images.
         :param cmd_endpoint:            The remote endpoint (IP address and port) to which to send AT commands.
         :param control_endpoint:        The remote endpoint (IP address and port) from which to receive critical data.
@@ -133,9 +136,9 @@ class ARDrone2(Drone):
         :param print_navdata_messages:  Whether or not to print navdata messages.
         :param video_endpoint:          The remote endpoint (IP address and port) from which to receive video.
         """
-        self.__camera_matrices: Tuple[Optional[np.ndarray], Optional[np.ndarray]] = camera_matrices
+        self.__camera_matrices: List[Optional[np.ndarray]] = list(camera_matrices)
         self.__current_camera: int = 0  # denotes the horizontal camera
-        self.__dist_coeffs: Tuple[Optional[np.ndarray], Optional[np.ndarray]] = dist_coeffs
+        self.__dist_coeffs: List[Optional[np.ndarray]] = list(dist_coeffs)
         self.__drone_state: str = ""
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
@@ -152,6 +155,15 @@ class ARDrone2(Drone):
         self.__rc_yaw: float = 0.0
         self.__sequence_number: int = 1
         self.__should_terminate: bool = False
+
+        # If the user didn't manually specify any undistortion parameters, use the defaults if allowed.
+        if self.__camera_matrices[0] is None and allow_default_undistort:
+            self.__camera_matrices[0] = np.array([
+                [545.0907676, 0., 320.83246651],
+                [0., 540.66721899, 162.46881425],
+                [0., 0., 1.]
+            ])
+            self.__dist_coeffs[0] = np.array([[-0.51839052, 0.58636131, 0.0037668, -0.00869583, -0.65549135]])
 
         # Set up the locks and conditions.
         self.__cmd_lock = threading.Lock()
