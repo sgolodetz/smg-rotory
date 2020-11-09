@@ -67,8 +67,14 @@ def main():
     args: dict = vars(parser.parse_args())
 
     # Connect to the drone, show the video stream from its camera, and track the pose using ORB-SLAM (if available).
+    kwargs: Dict[str, dict] = {
+        "ardrone2": dict(print_commands=False, print_control_messages=False, print_navdata_messages=False),
+        "tello": dict(print_commands=False, print_responses=False, print_state_messages=False)
+    }
+
     drone_type: str = args.get("drone_type")
-    with DroneFactory.make_drone(drone_type) as drone:
+
+    with DroneFactory.make_drone(drone_type, **kwargs[drone_type]) as drone:
         with make_tracker(drone_type) as tracker:
             while True:
                 image: np.ndarray = drone.get_image()
