@@ -38,21 +38,21 @@ def calibrate_camera(drone_type: str, image_dir: str) -> None:
         print(f"Processing {image_filename}...")
 
         # Load in the image, and record its shape (this only needs doing once, since all images have the same shape).
-        distorted_image: np.ndarray = cv2.imread(image_filename)
-        image_shape = distorted_image.shape[:2][::-1]
+        image: np.ndarray = cv2.imread(image_filename)
+        image_shape = image.shape[:2][::-1]
 
         # Try to find the calibration chessboard corners in the image.
-        result = find_corners(distorted_image, w, h)
+        result = find_corners(image, w, h)
 
         if result:
             # If successful, update the points lists, and visualise the chessboard corners.
-            distorted_corners, subpix_corners = result
+            corners, subpix_corners = result
 
             object_points.append(per_image_object_points)
             image_points.append(subpix_corners)
 
-            distorted_corners: np.ndarray = cv2.drawChessboardCorners(distorted_image, (w, h), subpix_corners, True)
-            cv2.imshow("Corners", distorted_corners)
+            corners_image: np.ndarray = cv2.drawChessboardCorners(image, (w, h), subpix_corners, True)
+            cv2.imshow("Corners", corners_image)
             cv2.waitKey(1)
         else:
             print("...could not find chessboard corners")
