@@ -13,61 +13,83 @@ def calibrate_camera(drone_type: str, image_dir: str) -> None:
     """
     Calibrate the camera of a drone of the specified type, using calibration images saved in the specified directory.
 
+    .. note::
+        See opencv-python-tutroals.readthedocs.io/en/latest/py_tutorials/py_calib3d/py_calibration/py_calibration.html.
+
     :param drone_type:  The type of drone.
     :param image_dir:   The directory containing the calibration images.
     """
     # Specify the size of the calibration chessboard.
     w, h = 9, 6
 
+    # Setup the 3D object points that will be used for each image.
     per_image_object_points = np.zeros((h * w, 3), np.float32)
     per_image_object_points[:, :2] = np.mgrid[0:w, 0:h].T.reshape(-1, 2)
 
+    # Setup lists in which to store the 3D object points and 2D image points for all images.
     object_points = []
     image_points = []
 
+    # For each image in the image directory:
     image_filenames = glob.glob(f"{image_dir}/*.png")
-    image_shape = (0, 0)
+    image_shape: Tuple[int, int] = (0, 0)
+
     for image_filename in image_filenames:
         print(f"Processing {image_filename}...")
 
-        image = cv2.imread(image_filename)
-        image_shape = image.shape[:2][::-1]
+        # Load in the image, and record its shape (this only needs doing once, since all images have the same shape).
+        distorted_image: np.ndarray = cv2.imread(image_filename)
+        image_shape = distorted_image.shape[:2][::-1]
 
-        result = find_corners(image, w, h)
+        # Try to find the calibration chessboard corners in the image.
+        result = find_corners(distorted_image, w, h)
+
         if result:
-            corners, subpix_corners = result
+            # If successful, update the points lists, and visualise the chessboard corners.
+            distorted_corners, subpix_corners = result
 
             object_points.append(per_image_object_points)
             image_points.append(subpix_corners)
 
-            corners_img = cv2.drawChessboardCorners(image, (w, h), subpix_corners, True)
-            cv2.imshow("Corners", corners_img)
+            distorted_corners: np.ndarray = cv2.drawChessboardCorners(distorted_image, (w, h), subpix_corners, True)
+            cv2.imshow("Corners", distorted_corners)
             cv2.waitKey(1)
         else:
             print("...could not find chessboard corners")
 
+    # Calibrate the camera. If we're using a Tello drone, we fix some of the camera parameters, on the basis that
+    # images from the Tello camera don't seem to suffer from any distortion.
     flags: int = 0
     if drone_type == "tello":
         flags = cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | \
                 cv2.CALIB_FIX_PRINCIPAL_POINT
 
-    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(object_points, image_points, image_shape, None, None, flags=flags)
+    ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
+        object_points, image_points, image_shape, None, None, flags=flags
+    )
+
+    # Print out the results of the calibration process.
     print(mtx)
     print(dist)
 
+    # Destroy all of the OpenCV windows we were using during the calibration.
     cv2.destroyAllWindows()
 
+    # For each image in the image directory:
     for image_filename in image_filenames:
         print(f"Processing {image_filename}...")
 
-        image = cv2.imread(image_filename)
-        undistorted_img = cv2.undistort(image, mtx, dist)
+        # Load in the image and undistort it.
+        distorted_image: np.ndarray = cv2.imread(image_filename)
+        undistorted_image: np.ndarray = cv2.undistort(distorted_image, mtx, dist)
 
-        corners_img = make_corners_image(image, w, h)
-        undistorted_corners_img = make_corners_image(undistorted_img, w, h)
+        # Try to visualise the chessboard corners on the distorted and undistorted images.
+        distorted_corners: Optional[np.ndarray] = make_corners_image(distorted_image, w, h)
+        undistorted_corners: Optional[np.ndarray] = make_corners_image(undistorted_image, w, h)
 
-        cv2.imshow("Image", corners_img if corners_img is not None else image)
-        cv2.imshow("Undistorted Image", undistorted_corners_img if undistorted_corners_img is not None else undistorted_img)
+        cv2.imshow("Distorted Image", distorted_corners if distorted_corners is not None else distorted_image)
+        cv2.imshow("Undistorted Image", undistorted_corners if undistorted_corners is not None else undistorted_image)
+
         if cv2.waitKey() == ord('q'):
             break
 
