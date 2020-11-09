@@ -43,14 +43,15 @@ def calibrate_camera() -> None:
             # cv2.imshow("Corners ({})".format(img_filename), corners_img)
             # cv2.waitKey()
             cv2.imshow("Corners", corners_img)
-            cv2.waitKey()
+            cv2.waitKey(1)
             # cv2.destroyAllWindows()
         else:
             print("...could not find chessboard corners")
 
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
         object_points, image_points, img_shape, None, None,
-        flags=cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | cv2.CALIB_FIX_PRINCIPAL_POINT
+        # Tello only
+        # flags=cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | cv2.CALIB_FIX_PRINCIPAL_POINT
     )
     print(mtx)
     print(dist)
