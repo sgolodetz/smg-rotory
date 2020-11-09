@@ -138,10 +138,14 @@ def save_images(drone_type: str, image_dir: str) -> None:
     :param drone_type:  The type of drone.
     :param image_dir:   The directory to which to save the calibration images.
     """
+    # Make sure the image directory exists.
     os.makedirs(image_dir, exist_ok=True)
-    if len(os.listdir(image_dir)) != 0:
-        raise ValueError(f"Cannot save calibration images into non-empty directory '{image_dir}'")
 
+    # If it already existed and was non-empty, early out so as to avoid overwriting existing files.
+    if len(os.listdir(image_dir)) != 0:
+        raise ValueError(f"Won't save calibration images into non-empty directory '{image_dir}' for safety reasons")
+
+    # Connect to the drone, and save images to the image directory at regular intervals.
     kwargs: Dict[str, dict] = {
         "ardrone2": dict(print_commands=False, print_control_messages=False, print_navdata_messages=False),
         "tello": dict(print_commands=False, print_responses=False, print_state_messages=False)
@@ -149,7 +153,7 @@ def save_images(drone_type: str, image_dir: str) -> None:
 
     with DroneFactory.make_drone(drone_type, **kwargs[drone_type]) as drone:
         i: int = 0
-        frame_sep: int = 200
+        image_sep: int = 200
 
         while True:
             image: np.ndarray = drone.get_image()
@@ -158,8 +162,8 @@ def save_images(drone_type: str, image_dir: str) -> None:
             if cv2.waitKey(1) == ord('q'):
                 break
 
-            if i >= 10 * frame_sep and i % frame_sep == 0:
-                cv2.imwrite(f"{image_dir}/{i // frame_sep:06d}.png", image)
+            if i >= 10 * image_sep and i % image_sep == 0:
+                cv2.imwrite(f"{image_dir}/{i // image_sep:06d}.png", image)
 
             i += 1
 
