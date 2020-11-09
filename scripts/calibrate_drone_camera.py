@@ -22,9 +22,11 @@ def calibrate_camera() -> None:
     object_points = []
     image_points = []
 
-    img_filenames = glob.glob("C:/drone_calib/attempt1/*.png")
+    img_filenames = glob.glob("C:/drone_calib/ardrone2_attempt1/*.png")
     img_shape = (0, 0)
     for img_filename in img_filenames:
+        print(f"Processing {img_filename}...")
+
         img = cv2.imread(img_filename)
         grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
         img_shape = grey.shape[::-1]
@@ -41,8 +43,10 @@ def calibrate_camera() -> None:
             # cv2.imshow("Corners ({})".format(img_filename), corners_img)
             # cv2.waitKey()
             cv2.imshow("Corners", corners_img)
-            cv2.waitKey(1)
+            cv2.waitKey()
             # cv2.destroyAllWindows()
+        else:
+            print("...could not find chessboard corners")
 
     ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(
         object_points, image_points, img_shape, None, None,
@@ -59,6 +63,7 @@ def save_frames(drone_type: str) -> None:
     :param drone_type:  TODO
     """
     kwargs: Dict[str, dict] = {
+        "ardrone2": dict(print_commands=False, print_control_messages=False, print_navdata_messages=False),
         "tello": dict(print_commands=False, print_responses=False, print_state_messages=False)
     }
 
