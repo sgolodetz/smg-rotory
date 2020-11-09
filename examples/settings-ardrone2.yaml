@@ -5,11 +5,10 @@
 #--------------------------------------------------------------------------------------------
 
 # Camera calibration and distortion parameters (OpenCV)
-# See: https://github.com/tum-vision/ardrone_autonomy/blob/master/calibrations/ardrone2_front/cal.yml
-Camera.fx: 561.999146
-Camera.fy: 561.782697
-Camera.cx: 307.433982
-Camera.cy: 190.144373
+Camera.fx: 545.0907676
+Camera.fy: 540.66721899
+Camera.cx: 320.83246651
+Camera.cy: 162.46881425
 
 Camera.k1: 0
 Camera.k2: 0
