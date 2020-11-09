@@ -4,22 +4,23 @@ import numpy as np
 import os
 
 from argparse import ArgumentParser
-from typing import Dict, Optional
+from typing import Dict, Optional, Tuple
 
 from smg.rotory.drone_factory import DroneFactory
 
 
 def calibrate_camera(drone_type: str, image_dir: str) -> None:
     """
-    TODO
+    Calibrate the camera of a drone of the specified type, using calibration images saved in the specified directory.
 
-    :param drone_type:  TODO
-    :param image_dir:   TODO
+    :param drone_type:  The type of drone.
+    :param image_dir:   The directory containing the calibration images.
     """
+    # Specify the size of the calibration chessboard.
     w, h = 9, 6
 
-    per_frame_object_points = np.zeros((h * w, 3), np.float32)
-    per_frame_object_points[:, :2] = np.mgrid[0:w, 0:h].T.reshape(-1, 2)
+    per_image_object_points = np.zeros((h * w, 3), np.float32)
+    per_image_object_points[:, :2] = np.mgrid[0:w, 0:h].T.reshape(-1, 2)
 
     object_points = []
     image_points = []
@@ -34,12 +35,12 @@ def calibrate_camera(drone_type: str, image_dir: str) -> None:
 
         result = find_corners(image, w, h)
         if result:
-            ret, corners, subpix_corners = result
+            corners, subpix_corners = result
 
-            object_points.append(per_frame_object_points)
+            object_points.append(per_image_object_points)
             image_points.append(subpix_corners)
 
-            corners_img = cv2.drawChessboardCorners(image, (w, h), subpix_corners, ret)
+            corners_img = cv2.drawChessboardCorners(image, (w, h), subpix_corners, True)
             cv2.imshow("Corners", corners_img)
             cv2.waitKey(1)
         else:
@@ -71,29 +72,46 @@ def calibrate_camera(drone_type: str, image_dir: str) -> None:
             break
 
 
-def find_corners(img: np.ndarray, w: int, h: int):
-    grey = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+def find_corners(image: np.ndarray, w: int, h: int) -> Optional[Tuple[np.ndarray, np.ndarray]]:
+    """
+    Try to find the calibration chessboard corners in the input image.
+
+    :param image:   The input image.
+    :param w:       The width of the chessboard pattern.
+    :param h:       The height of the chessboard pattern.
+    :return:        A tuple consisting of the corners and the refined corners, if found, or None otherwise.
+    """
+    grey = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     ret, corners = cv2.findChessboardCorners(grey, (w, h), None)
     if ret:
         criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 30, 0.001)
         subpix_corners = cv2.cornerSubPix(grey, corners, (11, 11), (-1, -1), criteria)
-        return ret, corners, subpix_corners
+        return corners, subpix_corners
     else:
         return None
 
 
 def make_corners_image(image: np.ndarray, w: int, h: int) -> Optional[np.ndarray]:
+    """
+    Try to make a version of the input image onto which the calibration chessboard corners have been superimposed.
+
+    :param image:   The input image.
+    :param w:       The width of the chessboard pattern.
+    :param h:       The height of the chessboard pattern.
+    :return:        A version of the input image onto which the chessboard corners have been superimposed,
+                    if they were successfully found, or None otherwise.
+    """
     result = find_corners(image, w, h)
     if result:
-        ret, corners, subpix_corners = result
-        return cv2.drawChessboardCorners(image, (w, h), subpix_corners, ret)
+        corners, subpix_corners = result
+        return cv2.drawChessboardCorners(image, (w, h), subpix_corners, True)
     else:
         return None
 
 
 def save_images(drone_type: str, image_dir: str) -> None:
     """
-    Save images from a drone for later calibration.
+    Save images from a drone of the specified type for later calibration.
 
     :param drone_type:  The type of drone.
     :param image_dir:   The directory to which to save the calibration images.
@@ -146,6 +164,7 @@ def main():
     # Either calibrate the camera, or save images for later calibration, depending on the mode.
     drone_type: str = args["drone_type"]
     image_dir: str = args["image_dir"]
+
     if args["mode"] == "calibrate":
         calibrate_camera(drone_type, image_dir)
     else:
