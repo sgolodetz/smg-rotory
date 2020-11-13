@@ -40,7 +40,7 @@ def make_tracker(drone_type: str):
     # Try to create a monocular ORB-SLAM tracker, if the package is installed, else create a NullTracker instead.
     try:
         # noinspection PyUnresolvedReferences
-        from smg.pyorbslam import MonocularTracker
+        from smg.pyorbslam2 import MonocularTracker
         tracker = MonocularTracker(
                 settings_file=f"settings-{drone_type}.yaml", use_viewer=True,
                 voc_file="C:/orbslam/Vocabulary/ORBvoc.txt", wait_till_ready=False
