@@ -110,11 +110,12 @@ class ARDrone2(Drone):
     # CONSTRUCTORS
 
     def __init__(self, *,
-                 allow_default_undistort: bool = True,
-                 camera_matrices: Tuple[Optional[np.ndarray], Optional[np.ndarray]] = (None, None),
+                 allow_default_intrinsics: bool = True,
                  cmd_endpoint: Tuple[str, int] = ("192.168.1.1", 5556),
                  control_endpoint: Tuple[str, int] = ("192.168.1.1", 5559),
                  dist_coeffs: Tuple[Optional[np.ndarray], Optional[np.ndarray]] = (None, None),
+                 intrinsics: Tuple[Optional[Tuple[float, float, float, float]],
+                                   Optional[Tuple[float, float, float, float]]] = (None, None),
                  local_ip: str = "192.168.1.2",
                  navdata_endpoint: Tuple[str, int] = ("192.168.1.1", 5554),
                  print_commands: bool = True,
@@ -124,24 +125,25 @@ class ARDrone2(Drone):
         """
         Construct an ARDrone2 object, which provides a convenient interface to control a Parrot AR Drone 2.
 
-        :param allow_default_undistort: Whether or not to allow the default image undistortion to happen if the user
-                                        doesn't manually specify any undistortion parameters.
-        :param camera_matrices:         Optional camera matrices to use to undistort the images.
-        :param cmd_endpoint:            The remote endpoint (IP address and port) to which to send AT commands.
-        :param control_endpoint:        The remote endpoint (IP address and port) from which to receive critical data.
-        :param dist_coeffs:             Optional distortion coefficients to use to undistort the images.
-        :param navdata_endpoint:        The remote endpoint (IP address and port) from which to receive navigation data.
-        :param print_commands:          Whether or not to print commands that are sent.
-        :param print_control_messages:  Whether or not to print control messages.
-        :param print_navdata_messages:  Whether or not to print navdata messages.
-        :param video_endpoint:          The remote endpoint (IP address and port) from which to receive video.
+        :param allow_default_intrinsics:    Whether or not to use the default camera intrinsics if the user
+                                            didn't manually specify them.
+        :param cmd_endpoint:                The remote endpoint (IP address and port) to which to send AT commands.
+        :param control_endpoint:            The remote endpoint (IP address and port) from which to receive critical
+                                            data.
+        :param dist_coeffs:                 Optional distortion coefficients to use to undistort the images.
+        :param intrinsics:                  Optional camera intrinsics, as (fx, fy, cx, cy) tuples.
+        :param navdata_endpoint:            The remote endpoint (IP address and port) from which to receive navigation data.
+        :param print_commands:              Whether or not to print commands that are sent.
+        :param print_control_messages:      Whether or not to print control messages.
+        :param print_navdata_messages:      Whether or not to print navdata messages.
+        :param video_endpoint:              The remote endpoint (IP address and port) from which to receive video.
         """
-        self.__camera_matrices: List[Optional[np.ndarray]] = list(camera_matrices)
         self.__current_camera: int = 0  # denotes the horizontal camera
         self.__dist_coeffs: List[Optional[np.ndarray]] = list(dist_coeffs)
         self.__drone_state: str = ""
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((360, 640), dtype=np.uint8)
+        self.__intrinsics: List[Optional[Tuple[float, float, float, float]]] = list(intrinsics)
         self.__navdata_is_available: bool = False
         self.__navdata_options: Dict[str, bytes] = {}
         self.__pave_header_fmt: str = "4sBBHIHHHHIIBBBBIIHBBBB2sI12s"
@@ -156,13 +158,9 @@ class ARDrone2(Drone):
         self.__sequence_number: int = 1
         self.__should_terminate: bool = False
 
-        # If the user didn't manually specify any undistortion parameters, use the defaults if allowed.
-        if self.__camera_matrices[0] is None and allow_default_undistort:
-            self.__camera_matrices[0] = np.array([
-                [545.0907676, 0., 320.83246651],
-                [0., 540.66721899, 162.46881425],
-                [0., 0., 1.]
-            ])
+        # If the user didn't manually specify any camera parameters, use the defaults if allowed.
+        if self.__intrinsics[0] is None and allow_default_intrinsics:
+            self.__intrinsics[0] = (545.0907676, 540.66721899, 320.83246651, 162.46881425)
             self.__dist_coeffs[0] = np.array([[-0.51839052, 0.58636131, 0.0037668, -0.00869583, -0.65549135]])
 
         # Set up the locks and conditions.
@@ -232,7 +230,7 @@ class ARDrone2(Drone):
         Get the most recent image received from the drone.
 
         .. note::
-            If camera matrices and distortion coefficients were passed to the constructor,
+            If the camera intrinsics and distortion coefficients were passed to the constructor,
             this function will also undistort the image using these before returning it.
 
         :return:    The most recent image received from the drone.
@@ -243,13 +241,36 @@ class ARDrone2(Drone):
 
             image: np.ndarray = self.__front_buffer.copy()
 
-        cur_camera_matrix: Optional[np.ndarray] = self.__camera_matrices[self.__current_camera]
+        cur_intrinsics: Optional[Tuple[float, float, float, float]] = self.__intrinsics[self.__current_camera]
         cur_dist_coeffs: Optional[np.ndarray] = self.__dist_coeffs[self.__current_camera]
 
-        if cur_camera_matrix is not None and cur_dist_coeffs is not None:
+        if cur_intrinsics is not None and cur_dist_coeffs is not None:
+            fx, fy, cx, cy = cur_intrinsics
+            cur_camera_matrix: np.ndarray = np.array([
+                [fx, 0., cx],
+                [0., fy, cy],
+                [0., 0., 1.]
+            ])
             return cv2.undistort(image, cur_camera_matrix, cur_dist_coeffs)
         else:
             return image
+
+    def get_image_size(self) -> Tuple[int, int]:
+        """
+        Get the size of the images captured by the drone.
+
+        :return:    The size of the images captured by the drone, as a (width, height) tuple.
+        """
+        return 640, 360
+
+    def get_intrinsics(self) -> Optional[Tuple[float, float, float, float]]:
+        """
+        Get the camera intrinsics, if known.
+
+        :return:    The camera intrinsics as an (fx, fy, cx, cy) tuple, if known, or None otherwise.
+        """
+        intrinsics: Optional[Tuple[float, float, float, float]] = self.__intrinsics[self.__current_camera]
+        return intrinsics if intrinsics is not None else None
 
     def get_navdata_option_fields(self, option_name: str) -> Optional[NamedTuple]:
         """
