@@ -55,8 +55,8 @@ class Tello(Drone):
 
         # If the user didn't manually specify any camera parameters, use the defaults if allowed.
         if self.__intrinsics is None and allow_default_intrinsics:
-            self.__intrinsics = (938.55289501, 932.86950291, 480.0, 360.0)
-            self.__dist_coeffs = np.array([[0.03306774, -0.40497806, -0.00216106, -0.00294729, 1.31711308]])
+            self.__intrinsics = (946.60441222, 941.38386885, 460.29254907, 357.08431882)
+            self.__dist_coeffs = np.array([[0.04968041, -0.59998154, -0.00377696, -0.00863985, 2.14472665]])
 
         # Set up the locks and conditions.
         self.__cmd_lock = threading.Lock()

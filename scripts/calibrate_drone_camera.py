@@ -60,9 +60,9 @@ def calibrate_camera(drone_type: str, image_dir: str) -> None:
     # Calibrate the camera. If we're using a Tello drone, we fix some of the camera parameters, on the basis that
     # images from the Tello camera don't seem to suffer from any distortion.
     flags: int = 0
-    if drone_type == "tello":
-        flags = cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | \
-                cv2.CALIB_FIX_PRINCIPAL_POINT
+    # if drone_type == "tello":
+    #     flags = cv2.CALIB_ZERO_TANGENT_DIST | cv2.CALIB_FIX_K1 | cv2.CALIB_FIX_K2 | cv2.CALIB_FIX_K3 | \
+    #             cv2.CALIB_FIX_PRINCIPAL_POINT
 
     ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
         object_points, image_points, image_shape, None, None, flags=flags
