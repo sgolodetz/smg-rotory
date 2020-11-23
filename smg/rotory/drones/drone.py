@@ -85,6 +85,11 @@ class Drone(ABC):
         pass
 
     @abstractmethod
+    def terminate(self) -> None:
+        """Tell the drone to terminate."""
+        pass
+
+    @abstractmethod
     def turn(self, rate: float) -> None:
         """
         Tell the drone to turn at the specified rate.

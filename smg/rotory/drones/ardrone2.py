@@ -215,13 +215,7 @@ class ARDrone2(Drone):
 
     def __exit__(self, exception_type, exception_value, traceback):
         """Destroy the drone object at the end of the with statement that's used to manage its lifetime."""
-        self.__should_terminate = True
-
-        # Wait for all of the threads to terminate.
-        self.__control_thread.join()
-        self.__heartbeat_thread.join()
-        self.__navdata_thread.join()
-        self.__video_thread.join()
+        self.terminate()
 
     # PUBLIC METHODS
 
@@ -428,6 +422,17 @@ class ARDrone2(Drone):
 
             # Check whether the drone's flying state has changed to reflect the takeoff.
             flying = self.__get_drone_state_bit(0)
+
+    def terminate(self) -> None:
+        """Tell the drone to terminate."""
+        if not self.__should_terminate:
+            self.__should_terminate = True
+
+            # Wait for all of the threads to terminate.
+            self.__control_thread.join()
+            self.__heartbeat_thread.join()
+            self.__navdata_thread.join()
+            self.__video_thread.join()
 
     def turn(self, rate: float) -> None:
         """

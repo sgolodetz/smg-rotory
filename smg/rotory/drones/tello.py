@@ -94,19 +94,7 @@ class Tello(Drone):
 
     def __exit__(self, exception_type, exception_value, traceback):
         """Destroy the drone object at the end of the with statement that's used to manage its lifetime."""
-        self.__should_terminate = True
-
-        # Artificially wake any waiting threads so that they can terminate.
-        # TODO: Check whether this is really necessary in Python, given that we're using condition timeouts.
-        with self.__cmd_lock:
-            self.__no_pending_response.notify_all()
-            self.__pending_response.notify_all()
-
-        # Wait for all of the threads to terminate.
-        self.__heartbeat_thread.join()
-        self.__response_thread.join()
-        self.__state_thread.join()
-        self.__video_thread.join()
+        self.terminate()
 
     # PUBLIC METHODS
 
@@ -216,6 +204,23 @@ class Tello(Drone):
     def takeoff(self) -> None:
         """Tell the drone to take off."""
         self.__send_command("takeoff", expect_response=True)
+
+    def terminate(self) -> None:
+        """Tell the drone to terminate."""
+        if not self.__should_terminate:
+            self.__should_terminate = True
+
+            # Artificially wake any waiting threads so that they can terminate.
+            # TODO: Check whether this is really necessary in Python, given that we're using condition timeouts.
+            with self.__cmd_lock:
+                self.__no_pending_response.notify_all()
+                self.__pending_response.notify_all()
+
+            # Wait for all of the threads to terminate.
+            self.__heartbeat_thread.join()
+            self.__response_thread.join()
+            self.__state_thread.join()
+            self.__video_thread.join()
 
     def turn(self, rate: float) -> None:
         """
