@@ -356,21 +356,19 @@ class ARDrone2(Drone):
         bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
         arg: int = BitsUtil.convert_lohi_bit_string_to_int32("".join(bits))
 
-        print(ARDrone2.__make_at_command("REF", -1, arg))
+        # Get the initial flying state.
+        flying: bool = self.__get_drone_state_bit(0)
 
-        # # Get the initial flying state.
-        # flying: bool = self.__get_drone_state_bit(0)
-        #
-        # # Until the drone has landed (or program termination has been requested):
-        # while flying and not self.__should_terminate:
-        #     # Send the landing command.
-        #     self.__send_command("REF", arg)
-        #
-        #     # Sleep for 30 milliseconds.
-        #     time.sleep(0.03)
-        #
-        #     # Check whether the drone's flying state has changed to reflect the landing.
-        #     flying = self.__get_drone_state_bit(0)
+        # Until the drone has landed (or program termination has been requested):
+        while flying and not self.__should_terminate:
+            # Send the landing command.
+            self.__send_command("REF", arg)
+
+            # Sleep for 30 milliseconds.
+            time.sleep(0.03)
+
+            # Check whether the drone's flying state has changed to reflect the landing.
+            flying = self.__get_drone_state_bit(0)
 
     def move_forward(self, rate: float) -> None:
         """
@@ -423,21 +421,19 @@ class ARDrone2(Drone):
         bits[9] = bits[18] = bits[20] = bits[22] = bits[24] = bits[28] = "1"
         arg: int = BitsUtil.convert_lohi_bit_string_to_int32("".join(bits))
 
-        print(ARDrone2.__make_at_command("REF", -1, arg))
+        # Get the initial flying state.
+        flying: bool = self.__get_drone_state_bit(0)
 
-        # # Get the initial flying state.
-        # flying: bool = self.__get_drone_state_bit(0)
-        #
-        # # Until the drone has taken off (or program termination has been requested):
-        # while not flying and not self.__should_terminate:
-        #     # Send the takeoff command.
-        #     self.__send_command("REF", arg)
-        #
-        #     # Sleep for 30 milliseconds.
-        #     time.sleep(0.03)
-        #
-        #     # Check whether the drone's flying state has changed to reflect the takeoff.
-        #     flying = self.__get_drone_state_bit(0)
+        # Until the drone has taken off (or program termination has been requested):
+        while not flying and not self.__should_terminate:
+            # Send the takeoff command.
+            self.__send_command("REF", arg)
+
+            # Sleep for 30 milliseconds.
+            time.sleep(0.03)
+
+            # Check whether the drone's flying state has changed to reflect the takeoff.
+            flying = self.__get_drone_state_bit(0)
 
     def terminate(self) -> None:
         """Tell the drone to terminate."""
@@ -515,13 +511,20 @@ class ARDrone2(Drone):
             self.__send_command("COMWDG")
 
             # TODO
-            flag: int = 1
+            eps: float = 0.1
+            hover: bool = self.__rc_forward < eps \
+                and self.__rc_right < eps \
+                and self.__rc_up < eps \
+                and self.__rc_yaw < eps
+            flag: int = 0 if hover else 1
 
             # TODO
-            print(self.__rc_right, self.__rc_forward, self.__rc_up, self.__rc_yaw)
+            print(flag, self.__rc_right, self.__rc_forward, self.__rc_up, self.__rc_yaw)
             # print(ARDrone2.__make_at_command(
             #     "PCMD", -1, flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
             # )
+            self.__send_command("PCMD", flag, self.__rc_right, -self.__rc_forward, 0.0, self.__rc_yaw)
+            # self.__send_command("PCMD", flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
 
     def __process_navdata_messages(self) -> None:
         """Process navdata messages sent by the drone."""
