@@ -6,7 +6,7 @@ from smg.imagesources import RGBImageSource
 from smg.rotory.drones.drone import Drone
 
 
-class RGBDroneCamera(RGBImageSource):
+class DroneRGBImageSource(RGBImageSource):
     """An RGB image source that wraps a drone."""
 
     # CONSTRUCTOR
