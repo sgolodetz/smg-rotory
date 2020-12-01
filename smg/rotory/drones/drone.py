@@ -1,6 +1,7 @@
 import numpy as np
 
 from abc import ABC, abstractmethod
+from typing import Optional, Tuple
 
 
 class Drone(ABC):
@@ -14,6 +15,24 @@ class Drone(ABC):
         Get the most recent image received from the drone.
 
         :return:    The most recent image received from the drone.
+        """
+        pass
+
+    @abstractmethod
+    def get_image_size(self) -> Tuple[int, int]:
+        """
+        Get the size of the images captured by the drone.
+
+        :return:    The size of the images captured by the drone, as a (width, height) tuple.
+        """
+        pass
+
+    @abstractmethod
+    def get_intrinsics(self) -> Optional[Tuple[float, float, float, float]]:
+        """
+        Get the camera intrinsics, if known.
+
+        :return:    The camera intrinsics as an (fx, fy, cx, cy) tuple, if known, or None otherwise.
         """
         pass
 
@@ -63,6 +82,11 @@ class Drone(ABC):
     @abstractmethod
     def takeoff(self) -> None:
         """Tell the drone to take off."""
+        pass
+
+    @abstractmethod
+    def terminate(self) -> None:
+        """Tell the drone to terminate."""
         pass
 
     @abstractmethod

@@ -1,4 +1,5 @@
 import av
+import cv2
 import numpy as np
 import socket
 import threading
@@ -16,6 +17,9 @@ class Tello(Drone):
     # CONSTRUCTOR
 
     def __init__(self, *,
+                 allow_default_intrinsics: bool = True,
+                 dist_coeffs: Optional[np.ndarray] = None,
+                 intrinsics: Optional[Tuple[float, float, float, float]] = None,
                  local_ip: str = "192.168.10.2",
                  remote_endpoint: Tuple[str, int] = ("192.168.10.1", 8889),
                  print_commands: bool = False,
@@ -24,14 +28,20 @@ class Tello(Drone):
         """
         Construct a Tello object, which provides a convenient interface to control a DJI Tello drone.
 
-        :param local_ip:                The IP address of the local machine.
-        :param remote_endpoint:         The remote endpoint (IP address and port) to which to send commands.
-        :param print_commands:          Whether or not to print commands that are sent.
-        :param print_responses:         Whether or not to print command responses.
-        :param print_state_messages:    Whether or not to print state messages.
+        :param allow_default_intrinsics:    Whether or not to use the default camera intrinsics if the user
+                                            didn't manually specify them.
+        :param dist_coeffs:                 Optional distortion coefficients to use to undistort the images.
+        :param intrinsics:                  Optional camera intrinsics, as an (fx, fy, cx, cy) tuple.
+        :param local_ip:                    The IP address of the local machine.
+        :param remote_endpoint:             The remote endpoint (IP address and port) to which to send commands.
+        :param print_commands:              Whether or not to print commands that are sent.
+        :param print_responses:             Whether or not to print command responses.
+        :param print_state_messages:        Whether or not to print state messages.
         """
+        self.__dist_coeffs: Optional[np.ndarray] = dist_coeffs
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((720, 960, 3), dtype=np.uint8)
+        self.__intrinsics: Optional[Tuple[float, float, float, float]] = intrinsics
         self.__print_commands: bool = print_commands
         self.__print_responses: bool = print_responses
         self.__print_state_messages: bool = print_state_messages
@@ -42,6 +52,11 @@ class Tello(Drone):
         self.__response_is_pending: bool = False
         self.__should_terminate: bool = False
         self.__state_map: dict = {}
+
+        # If the user didn't manually specify any camera parameters, use the defaults if allowed.
+        if self.__intrinsics is None and allow_default_intrinsics:
+            self.__intrinsics = (946.60441222, 941.38386885, 460.29254907, 357.08431882)
+            self.__dist_coeffs = np.array([[0.04968041, -0.59998154, -0.00377696, -0.00863985, 2.14472665]])
 
         # Set up the locks and conditions.
         self.__cmd_lock = threading.Lock()
@@ -79,19 +94,7 @@ class Tello(Drone):
 
     def __exit__(self, exception_type, exception_value, traceback):
         """Destroy the drone object at the end of the with statement that's used to manage its lifetime."""
-        self.__should_terminate = True
-
-        # Artificially wake any waiting threads so that they can terminate.
-        # TODO: Check whether this is really necessary in Python, given that we're using condition timeouts.
-        with self.__cmd_lock:
-            self.__no_pending_response.notify_all()
-            self.__pending_response.notify_all()
-
-        # Wait for all of the threads to terminate.
-        self.__heartbeat_thread.join()
-        self.__response_thread.join()
-        self.__state_thread.join()
-        self.__video_thread.join()
+        self.terminate()
 
     # PUBLIC METHODS
 
@@ -109,13 +112,44 @@ class Tello(Drone):
         """
         Get the most recent image received from the drone.
 
+        .. note::
+            If the camera intrinsics and distortion coefficients were passed to the constructor,
+            this function will also undistort the image using these before returning it.
+
         :return:    The most recent image received from the drone.
         """
         with self.__video_lock:
             while self.__frame_is_pending and not self.__should_terminate:
                 self.__no_pending_frame.wait(0.1)
 
-            return self.__front_buffer.copy()
+            image: np.ndarray = self.__front_buffer.copy()
+
+        if self.__intrinsics is not None and self.__dist_coeffs is not None:
+            fx, fy, cx, cy = self.__intrinsics
+            camera_matrix: np.ndarray = np.array([
+                [fx, 0., cx],
+                [0., fy, cy],
+                [0., 0., 1.]
+            ])
+            return cv2.undistort(image, camera_matrix, self.__dist_coeffs)
+        else:
+            return image
+
+    def get_image_size(self) -> Tuple[int, int]:
+        """
+        Get the size of the images captured by the drone.
+
+        :return:    The size of the images captured by the drone, as a (width, height) tuple.
+        """
+        return 960, 720
+
+    def get_intrinsics(self) -> Optional[Tuple[float, float, float, float]]:
+        """
+        Get the camera intrinsics, if known.
+
+        :return:    The camera intrinsics as an (fx, fy, cx, cy) tuple, if known, or None otherwise.
+        """
+        return self.__intrinsics
 
     def get_state_map(self) -> Dict[str, str]:
         """
@@ -170,6 +204,23 @@ class Tello(Drone):
     def takeoff(self) -> None:
         """Tell the drone to take off."""
         self.__send_command("takeoff", expect_response=True)
+
+    def terminate(self) -> None:
+        """Tell the drone to terminate."""
+        if not self.__should_terminate:
+            self.__should_terminate = True
+
+            # Artificially wake any waiting threads so that they can terminate.
+            # TODO: Check whether this is really necessary in Python, given that we're using condition timeouts.
+            with self.__cmd_lock:
+                self.__no_pending_response.notify_all()
+                self.__pending_response.notify_all()
+
+            # Wait for all of the threads to terminate.
+            self.__heartbeat_thread.join()
+            self.__response_thread.join()
+            self.__state_thread.join()
+            self.__video_thread.join()
 
     def turn(self, rate: float) -> None:
         """
