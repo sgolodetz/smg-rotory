@@ -219,6 +219,18 @@ class ARDrone2(Drone):
 
     # PUBLIC METHODS
 
+    def get_battery_level(self) -> Optional[int]:
+        """
+        Try to get the most recently received value of the remaining battery %.
+
+        :return:    The most recently received value of the remaining battery %, if available, or None otherwise.
+        """
+        fields: Optional[ARDrone2.DemoFields] = self.get_navdata_option_fields("demo")
+        if fields is not None:
+            return fields.vbat_flying_percentage
+        else:
+            return None
+
     def get_image(self) -> np.ndarray:
         """
         Get the most recent image received from the drone.

@@ -10,6 +10,15 @@ class Drone(ABC):
     # PUBLIC ABSTRACT METHODS
 
     @abstractmethod
+    def get_battery_level(self) -> Optional[int]:
+        """
+        Try to get the most recently received value of the remaining battery %.
+
+        :return:    The most recently received value of the remaining battery %, if available, or None otherwise.
+        """
+        pass
+
+    @abstractmethod
     def get_image(self) -> np.ndarray:
         """
         Get the most recent image received from the drone.
