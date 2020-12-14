@@ -93,6 +93,7 @@ def main():
 
             scale: float = 1.0
             scale_estimates: List[float] = []
+            showing_poses = False
 
             while True:
                 image: np.ndarray = drone.get_image()
@@ -102,19 +103,36 @@ def main():
                     break
 
                 if tracker.is_ready():
-                    # print("Tracker Pose:")
                     tracker_w_t_c: np.ndarray = tracker.estimate_pose(image)
 
-                    # print("Relocaliser Pose:")
                     relocaliser_c_t_w: np.ndarray = relocaliser.estimate_pose(
                         image, drone.get_intrinsics(), draw_detections=True, print_correspondences=False
                     )
 
                     if tracker_w_t_c is not None:
                         tracker_c_t_w: np.ndarray = np.linalg.inv(tracker_w_t_c)
-                        if relocaliser_c_t_w is not None:
-                            # print(tracker_c_t_w[1, 3], relocaliser_c_t_w[1, 3])
-                            # print(tracker_c_t_w[0:3, 3], relocaliser_c_t_w[0:3, 3])
+
+                        if c == ord('m') or showing_poses:
+                            showing_poses = True
+                            print("===BEGIN===")
+                            if relocaliser_c_t_w is not None:
+                                print("Relocaliser Pose:")
+                                print(relocaliser_c_t_w)
+                            if reference_tracker_c_t_w is not None:
+                                print("Tracker Pose:")
+                                scaled_reference_tracker_c_t_w: np.ndarray = reference_tracker_c_t_w.copy()
+                                scaled_reference_tracker_c_t_w[0:3, :] *= scale
+                                scaled_tracker_c_t_w: np.ndarray = tracker_c_t_w.copy()
+                                scaled_tracker_c_t_w[0:3, :] *= scale
+                                print(scaled_tracker_c_t_w @ np.linalg.inv(scaled_reference_tracker_c_t_w) @ reference_relocaliser_c_t_w)
+                            print("===END===")
+                        elif relocaliser_c_t_w is not None:
+                            if c == ord('n'):
+                                reference_tracker_c_t_w = tracker_c_t_w
+                                reference_relocaliser_c_t_w = relocaliser_c_t_w
+                                scale_estimates.clear()
+                                scale = 1.0
+
                             if reference_relocaliser_c_t_w is not None:
                                 tracker_offset = tracker_c_t_w[0:3, 3] - reference_tracker_c_t_w[0:3, 3]
                                 relocaliser_offset = relocaliser_c_t_w[0:3, 3] - reference_relocaliser_c_t_w[0:3, 3]
@@ -124,27 +142,6 @@ def main():
                                     scale_estimates.append(scale_estimate)
                                     scale = np.median(scale_estimates)
                                     print(np.linalg.norm(relocaliser_offset), np.linalg.norm(tracker_offset) * scale, scale_estimate, scale)
-                            if c == ord('n'):
-                                reference_tracker_c_t_w = tracker_c_t_w
-                                reference_relocaliser_c_t_w = relocaliser_c_t_w
-                            if c == ord('m'):
-                                # print("Reference Relocaliser Pose:")
-                                # print(reference_relocaliser_c_t_w)
-                                # print("Scaled Reference Tracker Pose:")
-                                scaled_reference_tracker_c_t_w: np.ndarray = reference_tracker_c_t_w.copy()
-                                scaled_reference_tracker_c_t_w[0:3, :] *= scale
-                                # print(scaled_reference_tracker_c_t_w)
-                                # print("Relative Relocaliser Pose:")
-                                # print(relocaliser_c_t_w @ np.linalg.inv(reference_relocaliser_c_t_w))  # cTw = cTi . iTw -> cTi = cTw . iTw^-1
-                                print("Relocaliser Pose:")
-                                print(relocaliser_c_t_w)
-                                print("Tracker Pose:")
-                                scaled_tracker_c_t_w: np.ndarray = tracker_c_t_w.copy()
-                                scaled_tracker_c_t_w[0:3, :] *= scale
-                                print(scaled_tracker_c_t_w @ np.linalg.inv(scaled_reference_tracker_c_t_w) @ reference_relocaliser_c_t_w)
-                                print("===")
-                        # else:
-                        #     print(tracker_c_t_w[0:3, 3])
 
 
 if __name__ == "__main__":
