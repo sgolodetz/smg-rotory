@@ -59,6 +59,8 @@ def make_tracker(drone_type: str):
 
 # noinspection PyUnresolvedReferences
 def main():
+    np.set_printoptions(suppress=True)
+
     # Parse any command-line arguments.
     parser = ArgumentParser()
     parser.add_argument(
@@ -126,18 +128,20 @@ def main():
                                 reference_tracker_c_t_w = tracker_c_t_w
                                 reference_relocaliser_c_t_w = relocaliser_c_t_w
                             if c == ord('m'):
-                                print("Reference Relocaliser Pose:")
-                                print(reference_relocaliser_c_t_w)
-                                print("Scaled Reference Tracker Pose:")
+                                # print("Reference Relocaliser Pose:")
+                                # print(reference_relocaliser_c_t_w)
+                                # print("Scaled Reference Tracker Pose:")
                                 scaled_reference_tracker_c_t_w: np.ndarray = reference_tracker_c_t_w.copy()
                                 scaled_reference_tracker_c_t_w[0:3, :] *= scale
-                                print(scaled_reference_tracker_c_t_w)
-                                print("Relative Relocaliser Pose:")
-                                print(relocaliser_c_t_w @ np.linalg.inv(reference_relocaliser_c_t_w))  # cTw = cTi . iTw -> cTi = cTw . iTw^-1
-                                print("Relative Tracker Pose:")
+                                # print(scaled_reference_tracker_c_t_w)
+                                # print("Relative Relocaliser Pose:")
+                                # print(relocaliser_c_t_w @ np.linalg.inv(reference_relocaliser_c_t_w))  # cTw = cTi . iTw -> cTi = cTw . iTw^-1
+                                print("Relocaliser Pose:")
+                                print(relocaliser_c_t_w)
+                                print("Tracker Pose:")
                                 scaled_tracker_c_t_w: np.ndarray = tracker_c_t_w.copy()
                                 scaled_tracker_c_t_w[0:3, :] *= scale
-                                print(scaled_tracker_c_t_w @ np.linalg.inv(scaled_reference_tracker_c_t_w))
+                                print(scaled_tracker_c_t_w @ np.linalg.inv(scaled_reference_tracker_c_t_w) @ reference_relocaliser_c_t_w)
                                 print("===")
                         # else:
                         #     print(tracker_c_t_w[0:3, 3])
