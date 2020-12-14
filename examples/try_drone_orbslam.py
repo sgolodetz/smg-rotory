@@ -89,6 +89,7 @@ def main():
             reference_tracker_c_t_w = None
             reference_relocaliser_c_t_w = None
 
+            scale: float = 1.0
             scale_estimates: List[float] = []
 
             while True:
@@ -119,11 +120,25 @@ def main():
                                 if np.linalg.norm(relocaliser_offset) >= min_norm:
                                     scale_estimate: float = np.linalg.norm(relocaliser_offset) / np.linalg.norm(tracker_offset)
                                     scale_estimates.append(scale_estimate)
-                                    scale: float = np.median(scale_estimates)
+                                    scale = np.median(scale_estimates)
                                     print(np.linalg.norm(relocaliser_offset), np.linalg.norm(tracker_offset) * scale, scale_estimate, scale)
                             if c == ord('n'):
                                 reference_tracker_c_t_w = tracker_c_t_w
                                 reference_relocaliser_c_t_w = relocaliser_c_t_w
+                            if c == ord('m'):
+                                print("Reference Relocaliser Pose:")
+                                print(reference_relocaliser_c_t_w)
+                                print("Scaled Reference Tracker Pose:")
+                                scaled_reference_tracker_c_t_w: np.ndarray = reference_tracker_c_t_w.copy()
+                                scaled_reference_tracker_c_t_w[0:3, :] *= scale
+                                print(scaled_reference_tracker_c_t_w)
+                                print("Relative Relocaliser Pose:")
+                                print(relocaliser_c_t_w @ np.linalg.inv(reference_relocaliser_c_t_w))  # cTw = cTi . iTw -> cTi = cTw . iTw^-1
+                                print("Relative Tracker Pose:")
+                                scaled_tracker_c_t_w: np.ndarray = tracker_c_t_w.copy()
+                                scaled_tracker_c_t_w[0:3, :] *= scale
+                                print(scaled_tracker_c_t_w @ np.linalg.inv(scaled_reference_tracker_c_t_w))
+                                print("===")
                         # else:
                         #     print(tracker_c_t_w[0:3, 3])
 
