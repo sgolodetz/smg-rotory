@@ -89,6 +89,8 @@ def main():
             reference_tracker_c_t_w = None
             reference_relocaliser_c_t_w = None
 
+            scale_estimates: List[float] = []
+
             while True:
                 image: np.ndarray = drone.get_image()
                 cv2.imshow("Image", image)
@@ -113,8 +115,12 @@ def main():
                             if reference_relocaliser_c_t_w is not None:
                                 tracker_offset = tracker_c_t_w[0:3, 3] - reference_tracker_c_t_w[0:3, 3]
                                 relocaliser_offset = relocaliser_c_t_w[0:3, 3] - reference_relocaliser_c_t_w[0:3, 3]
-                                if np.linalg.norm(tracker_offset) > 0.0:
-                                    print(np.linalg.norm(relocaliser_offset) / np.linalg.norm(tracker_offset))
+                                min_norm: float = 0.1
+                                if np.linalg.norm(relocaliser_offset) >= min_norm:
+                                    scale_estimate: float = np.linalg.norm(relocaliser_offset) / np.linalg.norm(tracker_offset)
+                                    scale_estimates.append(scale_estimate)
+                                    scale: float = np.median(scale_estimates)
+                                    print(np.linalg.norm(relocaliser_offset), np.linalg.norm(tracker_offset) * scale, scale_estimate, scale)
                             if c == ord('n'):
                                 reference_tracker_c_t_w = tracker_c_t_w
                                 reference_relocaliser_c_t_w = relocaliser_c_t_w
