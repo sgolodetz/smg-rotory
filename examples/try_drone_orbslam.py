@@ -5,6 +5,7 @@ import numpy as np
 
 from argparse import ArgumentParser
 
+from smg.relocalisation.aruco_pnp_relocaliser import ArUcoPnPRelocaliser
 from smg.rotory.drone_factory import DroneFactory
 
 
@@ -74,16 +75,51 @@ def main():
 
     drone_type: str = args.get("drone_type")
 
+    height: float = 1.5
+    offset: float = 0.0705
+    relocaliser: ArUcoPnPRelocaliser = ArUcoPnPRelocaliser({
+        "0_0": np.array([-offset, -(height + offset), 0]),
+        "0_1": np.array([offset, -(height + offset), 0]),
+        "0_2": np.array([offset, -(height - offset), 0]),
+        "0_3": np.array([-offset, -(height - offset), 0])
+    })
+
     with DroneFactory.make_drone(drone_type, **kwargs[drone_type]) as drone:
         with make_tracker(drone_type) as tracker:
+            reference_tracker_c_t_w = None
+            reference_relocaliser_c_t_w = None
+
             while True:
                 image: np.ndarray = drone.get_image()
                 cv2.imshow("Image", image)
-                if cv2.waitKey(1) == ord('q'):
+                c: int = cv2.waitKey(1)
+                if c == ord('q'):
                     break
 
                 if tracker.is_ready():
-                    print(tracker.estimate_pose(image))
+                    # print("Tracker Pose:")
+                    tracker_w_t_c: np.ndarray = tracker.estimate_pose(image)
+
+                    # print("Relocaliser Pose:")
+                    relocaliser_c_t_w: np.ndarray = relocaliser.estimate_pose(
+                        image, drone.get_intrinsics(), draw_detections=True, print_correspondences=False
+                    )
+
+                    if tracker_w_t_c is not None:
+                        tracker_c_t_w: np.ndarray = np.linalg.inv(tracker_w_t_c)
+                        if relocaliser_c_t_w is not None:
+                            # print(tracker_c_t_w[1, 3], relocaliser_c_t_w[1, 3])
+                            # print(tracker_c_t_w[0:3, 3], relocaliser_c_t_w[0:3, 3])
+                            if reference_relocaliser_c_t_w is not None:
+                                tracker_offset = tracker_c_t_w[0:3, 3] - reference_tracker_c_t_w[0:3, 3]
+                                relocaliser_offset = relocaliser_c_t_w[0:3, 3] - reference_relocaliser_c_t_w[0:3, 3]
+                                if np.linalg.norm(tracker_offset) > 0.0:
+                                    print(np.linalg.norm(relocaliser_offset) / np.linalg.norm(tracker_offset))
+                            if c == ord('n'):
+                                reference_tracker_c_t_w = tracker_c_t_w
+                                reference_relocaliser_c_t_w = relocaliser_c_t_w
+                        # else:
+                        #     print(tracker_c_t_w[0:3, 3])
 
 
 if __name__ == "__main__":
