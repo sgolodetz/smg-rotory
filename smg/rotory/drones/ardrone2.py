@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import av
 import cv2
+import math
 import numpy as np
 import socket
 import struct
@@ -118,9 +119,9 @@ class ARDrone2(Drone):
                                    Optional[Tuple[float, float, float, float]]] = (None, None),
                  local_ip: str = "192.168.1.2",
                  navdata_endpoint: Tuple[str, int] = ("192.168.1.1", 5554),
-                 print_commands: bool = True,
-                 print_control_messages: bool = True,
-                 print_navdata_messages: bool = True,
+                 print_commands: bool = False,
+                 print_control_messages: bool = False,
+                 print_navdata_messages: bool = False,
                  video_endpoint: Tuple[str, int] = ("192.168.1.1", 5555)):
         """
         Construct an ARDrone2 object, which provides a convenient interface to control a Parrot AR Drone 2.
@@ -502,13 +503,25 @@ class ARDrone2(Drone):
                 print(f"Control Message ({len(control_message)}): {control_message}")
 
     def __process_heartbeats(self) -> None:
-        """TODO"""
+        """Send regular messages (including flight control messages) to keep the drone awake."""
         while not self.__should_terminate:
             # Sleep for 30 milliseconds.
             time.sleep(0.03)
 
             # Send a COMWDG command to the drone to keep it awake.
             self.__send_command("COMWDG")
+
+            # Decide whether or not the drone should be in hover mode, based on the magnitudes of the control inputs.
+            # Hover mode helps to keep the drone stable (and is thus preferred) when the control inputs are all small.
+            eps: float = 0.1
+            hover: bool = math.fabs(self.__rc_forward) < eps \
+                and math.fabs(self.__rc_right) < eps \
+                and math.fabs(self.__rc_up) < eps \
+                and math.fabs(self.__rc_yaw) < eps
+            flag: int = 0 if hover else 1
+
+            # Send a PCMD command to the drone to tell it how we want it to move.
+            self.__send_command("PCMD", flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
 
     def __process_navdata_messages(self) -> None:
         """Process navdata messages sent by the drone."""
