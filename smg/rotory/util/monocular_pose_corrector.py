@@ -54,6 +54,14 @@ class MonocularPoseCorrector:
             self.__scale = np.median(self.__scale_estimates)
             print(relocaliser_norm, tracker_norm * self.__scale, scale_estimate, self.__scale)
 
+    def has_reference(self) -> bool:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        return self.__reference_relocaliser_w_t_c is not None
+
     def maintain_height(self) -> None:
         """
         TODO

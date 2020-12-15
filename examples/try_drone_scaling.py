@@ -2,11 +2,12 @@ import cv2
 import numpy as np
 
 from argparse import ArgumentParser
-from typing import Dict, List
+from typing import Dict
 
 from smg.pyorbslam2 import MonocularTracker
 from smg.relocalisation import ArUcoPnPRelocaliser
 from smg.rotory import DroneFactory
+from smg.rotory.util.monocular_pose_corrector import MonocularPoseCorrector
 
 
 def main():
@@ -30,6 +31,9 @@ def main():
         "0_3": np.array([-offset, -(height - offset), 0])
     })
 
+    # Construct a monocular pose corrector.
+    corrector: MonocularPoseCorrector = MonocularPoseCorrector(debug=True)
+
     # Connect to the drone.
     kwargs: Dict[str, dict] = {
         "ardrone2": dict(print_commands=False, print_control_messages=False, print_navdata_messages=False),
@@ -44,11 +48,6 @@ def main():
             settings_file=f"settings-{drone_type}.yaml", use_viewer=True,
             voc_file="C:/orbslam2/Vocabulary/ORBvoc.txt", wait_till_ready=False
         ) as tracker:
-            reference_tracker_w_t_c = None
-            reference_relocaliser_w_t_c = None
-
-            scale: float = 1.0
-            scale_estimates: List[float] = []
             showing_poses = False
 
             while True:
@@ -60,44 +59,30 @@ def main():
 
                 if tracker.is_ready():
                     tracker_c_t_w: np.ndarray = tracker.estimate_pose(image)
+                    if tracker_c_t_w is None:
+                        continue
 
                     relocaliser_w_t_c: np.ndarray = relocaliser.estimate_pose(
                         image, drone.get_intrinsics(), draw_detections=True, print_correspondences=False
                     )
 
-                    if tracker_c_t_w is not None:
-                        tracker_w_t_c: np.ndarray = np.linalg.inv(tracker_c_t_w)
+                    tracker_w_t_c: np.ndarray = np.linalg.inv(tracker_c_t_w)
 
-                        if c == ord('m') or showing_poses:
-                            showing_poses = True
-                            print("===BEGIN===")
-                            if relocaliser_w_t_c is not None:
-                                print("Relocaliser Pose:")
-                                print(relocaliser_w_t_c)
-                            if reference_tracker_w_t_c is not None:
-                                print("Tracker Pose:")
-                                scaled_reference_tracker_w_t_c: np.ndarray = reference_tracker_w_t_c.copy()
-                                scaled_reference_tracker_w_t_c[0:3, :] *= scale
-                                scaled_tracker_w_t_c: np.ndarray = tracker_w_t_c.copy()
-                                scaled_tracker_w_t_c[0:3, :] *= scale
-                                print(scaled_tracker_w_t_c @ np.linalg.inv(scaled_reference_tracker_w_t_c) @ reference_relocaliser_w_t_c)
-                            print("===END===")
-                        elif relocaliser_w_t_c is not None:
-                            if c == ord('n'):
-                                reference_tracker_w_t_c = tracker_w_t_c
-                                reference_relocaliser_w_t_c = relocaliser_w_t_c
-                                scale_estimates.clear()
-                                scale = 1.0
-
-                            if reference_relocaliser_w_t_c is not None:
-                                tracker_offset = tracker_w_t_c[0:3, 3] - reference_tracker_w_t_c[0:3, 3]
-                                relocaliser_offset = relocaliser_w_t_c[0:3, 3] - reference_relocaliser_w_t_c[0:3, 3]
-                                min_norm: float = 0.1
-                                if np.linalg.norm(relocaliser_offset) >= min_norm:
-                                    scale_estimate: float = np.linalg.norm(relocaliser_offset) / np.linalg.norm(tracker_offset)
-                                    scale_estimates.append(scale_estimate)
-                                    scale = np.median(scale_estimates)
-                                    print(np.linalg.norm(relocaliser_offset), np.linalg.norm(tracker_offset) * scale, scale_estimate, scale)
+                    if c == ord('m') or showing_poses:
+                        showing_poses = True
+                        print("===BEGIN===")
+                        if relocaliser_w_t_c is not None:
+                            print("Relocaliser Pose:")
+                            print(relocaliser_w_t_c)
+                        if corrector.has_reference():
+                            print("Corrected Tracker Pose:")
+                            print(corrector.apply(tracker_w_t_c))
+                        print("===END===")
+                    elif relocaliser_w_t_c is not None:
+                        if c == ord('n'):
+                            corrector.set_reference(tracker_w_t_c, relocaliser_w_t_c)
+                        if corrector.has_reference():
+                            corrector.calibrate(tracker_w_t_c, relocaliser_w_t_c)
 
 
 if __name__ == "__main__":
