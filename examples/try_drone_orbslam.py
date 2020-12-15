@@ -5,8 +5,8 @@ import numpy as np
 
 from argparse import ArgumentParser
 
-from smg.relocalisation.aruco_pnp_relocaliser import ArUcoPnPRelocaliser
-from smg.rotory.drone_factory import DroneFactory
+from smg.relocalisation import ArUcoPnPRelocaliser
+from smg.rotory import DroneFactory
 
 
 # CLASSES

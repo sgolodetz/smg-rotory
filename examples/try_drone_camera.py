@@ -4,7 +4,7 @@ import numpy as np
 from argparse import ArgumentParser
 from typing import Dict
 
-from smg.rotory.drone_factory import DroneFactory
+from smg.rotory import DroneFactory
 
 
 def main():
