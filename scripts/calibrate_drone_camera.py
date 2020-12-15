@@ -6,7 +6,7 @@ import os
 from argparse import ArgumentParser
 from typing import Dict, Optional, Tuple
 
-from smg.rotory.drone_factory import DroneFactory
+from smg.rotory import DroneFactory
 
 
 def calibrate_camera(drone_type: str, image_dir: str) -> None:

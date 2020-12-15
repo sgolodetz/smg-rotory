@@ -1,4 +1,4 @@
-from smg.rotory.drones.ardrone2 import ARDrone2
+from smg.rotory.drones import ARDrone2
 
 
 def main():
