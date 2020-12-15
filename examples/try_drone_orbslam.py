@@ -5,7 +5,6 @@ import numpy as np
 
 from argparse import ArgumentParser
 
-from smg.relocalisation import ArUcoPnPRelocaliser
 from smg.rotory import DroneFactory
 
 
@@ -59,8 +58,6 @@ def make_tracker(drone_type: str):
 
 # noinspection PyUnresolvedReferences
 def main():
-    np.set_printoptions(suppress=True)
-
     # Parse any command-line arguments.
     parser = ArgumentParser()
     parser.add_argument(
@@ -77,72 +74,16 @@ def main():
 
     drone_type: str = args.get("drone_type")
 
-    height: float = 1.5
-    offset: float = 0.0705
-    relocaliser: ArUcoPnPRelocaliser = ArUcoPnPRelocaliser({
-        "0_0": np.array([-offset, -(height + offset), 0]),
-        "0_1": np.array([offset, -(height + offset), 0]),
-        "0_2": np.array([offset, -(height - offset), 0]),
-        "0_3": np.array([-offset, -(height - offset), 0])
-    })
-
     with DroneFactory.make_drone(drone_type, **kwargs[drone_type]) as drone:
         with make_tracker(drone_type) as tracker:
-            reference_tracker_c_t_w = None
-            reference_relocaliser_c_t_w = None
-
-            scale: float = 1.0
-            scale_estimates: List[float] = []
-            showing_poses = False
-
             while True:
                 image: np.ndarray = drone.get_image()
                 cv2.imshow("Image", image)
-                c: int = cv2.waitKey(1)
-                if c == ord('q'):
+                if cv2.waitKey(1) == ord('q'):
                     break
 
                 if tracker.is_ready():
-                    # TODO: Check whether the wTc and cTw are the right way round.
-                    tracker_w_t_c: np.ndarray = tracker.estimate_pose(image)
-
-                    relocaliser_c_t_w: np.ndarray = relocaliser.estimate_pose(
-                        image, drone.get_intrinsics(), draw_detections=True, print_correspondences=False
-                    )
-
-                    if tracker_w_t_c is not None:
-                        tracker_c_t_w: np.ndarray = np.linalg.inv(tracker_w_t_c)
-
-                        if c == ord('m') or showing_poses:
-                            showing_poses = True
-                            print("===BEGIN===")
-                            if relocaliser_c_t_w is not None:
-                                print("Relocaliser Pose:")
-                                print(relocaliser_c_t_w)
-                            if reference_tracker_c_t_w is not None:
-                                print("Tracker Pose:")
-                                scaled_reference_tracker_c_t_w: np.ndarray = reference_tracker_c_t_w.copy()
-                                scaled_reference_tracker_c_t_w[0:3, :] *= scale
-                                scaled_tracker_c_t_w: np.ndarray = tracker_c_t_w.copy()
-                                scaled_tracker_c_t_w[0:3, :] *= scale
-                                print(scaled_tracker_c_t_w @ np.linalg.inv(scaled_reference_tracker_c_t_w) @ reference_relocaliser_c_t_w)
-                            print("===END===")
-                        elif relocaliser_c_t_w is not None:
-                            if c == ord('n'):
-                                reference_tracker_c_t_w = tracker_c_t_w
-                                reference_relocaliser_c_t_w = relocaliser_c_t_w
-                                scale_estimates.clear()
-                                scale = 1.0
-
-                            if reference_relocaliser_c_t_w is not None:
-                                tracker_offset = tracker_c_t_w[0:3, 3] - reference_tracker_c_t_w[0:3, 3]
-                                relocaliser_offset = relocaliser_c_t_w[0:3, 3] - reference_relocaliser_c_t_w[0:3, 3]
-                                min_norm: float = 0.1
-                                if np.linalg.norm(relocaliser_offset) >= min_norm:
-                                    scale_estimate: float = np.linalg.norm(relocaliser_offset) / np.linalg.norm(tracker_offset)
-                                    scale_estimates.append(scale_estimate)
-                                    scale = np.median(scale_estimates)
-                                    print(np.linalg.norm(relocaliser_offset), np.linalg.norm(tracker_offset) * scale, scale_estimate, scale)
+                    print(tracker.estimate_pose(image))
 
 
 if __name__ == "__main__":
