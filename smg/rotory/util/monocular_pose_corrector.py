@@ -1,6 +1,6 @@
 import numpy as np
 
-from typing import List, Optional
+from typing import Optional
 
 
 class MonocularPoseCorrector:
@@ -19,7 +19,8 @@ class MonocularPoseCorrector:
         self.__reference_relocaliser_w_t_c: Optional[np.ndarray] = None
         self.__reference_tracker_i_t_c: Optional[np.ndarray] = None
         self.__scale: float = 1.0
-        self.__scale_estimates: List[float] = []
+        self.__scale_count: int = 0
+        self.__scale_sum: float = 0.0
 
     # PUBLIC METHODS
 
@@ -31,10 +32,13 @@ class MonocularPoseCorrector:
         :return:                TODO
         """
         scaled_reference_tracker_i_t_c: np.ndarray = self.__reference_tracker_i_t_c.copy()
-        scaled_reference_tracker_i_t_c[0:3, :] *= self.__scale
+        scaled_reference_tracker_i_t_c[0:3, 3] *= self.__scale
         scaled_tracker_i_t_c: np.ndarray = tracker_i_t_c.copy()
-        scaled_tracker_i_t_c[0:3, :] *= self.__scale
-        # wTc = wTi . iTc
+        scaled_tracker_i_t_c[0:3, 3] *= self.__scale
+        # # wTc = wTi . iTc
+        # result = np.linalg.inv(self.__reference_tracker_i_t_c) @ tracker_i_t_c
+        # result[0:3, :] *= self.__scale
+        # return result
         return self.__reference_relocaliser_w_t_c @ np.linalg.inv(scaled_reference_tracker_i_t_c) @ scaled_tracker_i_t_c
 
     def calibrate(self, tracker_i_t_c: np.ndarray, relocaliser_w_t_c: np.ndarray, *, min_norm: float = 0.1) -> None:
@@ -51,9 +55,11 @@ class MonocularPoseCorrector:
         relocaliser_norm: float = np.linalg.norm(relocaliser_offset)
         if tracker_norm > 0 and relocaliser_norm >= min_norm:
             scale_estimate: float = relocaliser_norm / tracker_norm
-            self.__scale_estimates.append(scale_estimate)
-            self.__scale = np.median(self.__scale_estimates)
-            print(relocaliser_norm, tracker_norm * self.__scale, scale_estimate, self.__scale)
+            self.__scale_sum += scale_estimate
+            self.__scale_count += 1
+            self.__scale = self.__scale_sum / self.__scale_count
+            if self.__debug:
+                print(relocaliser_norm, tracker_norm * self.__scale, scale_estimate, self.__scale)
 
     def has_reference(self) -> bool:
         """
@@ -77,7 +83,8 @@ class MonocularPoseCorrector:
         self.__reference_relocaliser_w_t_c = None
         self.__reference_tracker_i_t_c = None
         self.__scale = 1.0
-        self.__scale_estimates.clear()
+        self.__scale_count = 0
+        self.__scale_sum = 0.0
 
     def set_reference(self, tracker_i_t_c: np.ndarray, relocaliser_w_t_c: np.ndarray) -> None:
         """
@@ -89,4 +96,5 @@ class MonocularPoseCorrector:
         self.__reference_relocaliser_w_t_c = relocaliser_w_t_c
         self.__reference_tracker_i_t_c = tracker_i_t_c
         self.__scale = 1.0
-        self.__scale_estimates.clear()
+        self.__scale_count = 0
+        self.__scale_sum = 0.0
