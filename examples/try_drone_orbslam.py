@@ -103,6 +103,7 @@ def main():
                     break
 
                 if tracker.is_ready():
+                    # TODO: Check whether the wTc and cTw are the right way round.
                     tracker_w_t_c: np.ndarray = tracker.estimate_pose(image)
 
                     relocaliser_c_t_w: np.ndarray = relocaliser.estimate_pose(
