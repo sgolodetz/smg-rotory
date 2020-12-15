@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import av
 import cv2
+import math
 import numpy as np
 import socket
 import struct
@@ -512,10 +513,10 @@ class ARDrone2(Drone):
 
             # TODO
             eps: float = 0.1
-            hover: bool = self.__rc_forward < eps \
-                and self.__rc_right < eps \
-                and self.__rc_up < eps \
-                and self.__rc_yaw < eps
+            hover: bool = math.fabs(self.__rc_forward) < eps \
+                and math.fabs(self.__rc_right) < eps \
+                and math.fabs(self.__rc_up) < eps \
+                and math.fabs(self.__rc_yaw) < eps
             flag: int = 0 if hover else 1
 
             # TODO
