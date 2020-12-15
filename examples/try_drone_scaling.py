@@ -21,7 +21,7 @@ def main():
     args: dict = vars(parser.parse_args())
 
     # Set up a relocaliser that uses an ArUco marker of a known size and at a known height to relocalise.
-    height: float = 1.5  # 1.5m (the height of the centre of the printed marker)
+    height: float = 1.285  # 1.285m (the height of the centre of the printed marker)
     offset: float = 0.0705  # 7.05cm (half the width of the printed marker)
     relocaliser: ArUcoPnPRelocaliser = ArUcoPnPRelocaliser({
         "0_0": np.array([-offset, -(height + offset), 0]),
