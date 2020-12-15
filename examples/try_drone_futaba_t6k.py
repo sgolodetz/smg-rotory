@@ -6,8 +6,8 @@ import pygame
 
 from typing import Dict
 
-from smg.rotory.drone_factory import DroneFactory
-from smg.rotory.joysticks.futaba_t6k import FutabaT6K
+from smg.rotory import DroneFactory
+from smg.rotory.joysticks import FutabaT6K
 
 
 def main():

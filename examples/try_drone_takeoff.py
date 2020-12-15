@@ -2,7 +2,7 @@ import time
 
 from argparse import ArgumentParser
 
-from smg.rotory.drone_factory import DroneFactory
+from smg.rotory import DroneFactory
 
 
 def main():
