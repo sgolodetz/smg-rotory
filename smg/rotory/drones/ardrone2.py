@@ -524,7 +524,7 @@ class ARDrone2(Drone):
             # print(ARDrone2.__make_at_command(
             #     "PCMD", -1, flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
             # )
-            self.__send_command("PCMD", flag, self.__rc_right, -self.__rc_forward, 0.0, self.__rc_yaw)
+            self.__send_command("PCMD", flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
             # self.__send_command("PCMD", flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
 
     def __process_navdata_messages(self) -> None:
