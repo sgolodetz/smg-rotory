@@ -36,9 +36,6 @@ class MonocularPoseCorrector:
         scaled_tracker_i_t_c: np.ndarray = tracker_i_t_c.copy()
         scaled_tracker_i_t_c[0:3, 3] *= self.__scale
         # # wTc = wTi . iTc
-        # result = np.linalg.inv(self.__reference_tracker_i_t_c) @ tracker_i_t_c
-        # result[0:3, :] *= self.__scale
-        # return result
         return self.__reference_relocaliser_w_t_c @ np.linalg.inv(scaled_reference_tracker_i_t_c) @ scaled_tracker_i_t_c
 
     def calibrate(self, tracker_i_t_c: np.ndarray, relocaliser_w_t_c: np.ndarray, *, min_norm: float = 0.1) -> None:
