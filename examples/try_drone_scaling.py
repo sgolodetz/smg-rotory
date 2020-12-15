@@ -1,63 +1,14 @@
-from contextlib import contextmanager
-
 import cv2
 import numpy as np
 
 from argparse import ArgumentParser
+from typing import Dict, List
 
+from smg.pyorbslam2 import MonocularTracker
 from smg.relocalisation import ArUcoPnPRelocaliser
 from smg.rotory import DroneFactory
 
 
-# CLASSES
-
-class NullTracker:
-    """A null tracker that can be used as a stub for MonocularTracker when it's not available."""
-
-    # PUBLIC METHODS
-
-    # noinspection PyMethodMayBeStatic
-    def is_ready(self) -> bool:
-        return False
-
-    def terminate(self) -> None:
-        pass
-
-
-# FUNCTIONS
-
-@contextmanager
-def make_tracker(drone_type: str):
-    """
-    Make a monocular ORB-SLAM tracker for a drone, if the package is installed, else make a NullTracker instead.
-
-    .. note::
-        This function is intended to be called as the expression of a with statement.
-    .. note::
-        Since MonocularTracker might or might not be available, I've deliberately avoided specifying the return type.
-
-    :param drone_type:  The type of drone (needed to determine which ORB-SLAM settings to use).
-    """
-    # Try to create a monocular ORB-SLAM tracker, if the package is installed, else create a NullTracker instead.
-    try:
-        # noinspection PyUnresolvedReferences
-        from smg.pyorbslam2 import MonocularTracker
-        tracker = MonocularTracker(
-                settings_file=f"settings-{drone_type}.yaml", use_viewer=True,
-                voc_file="C:/orbslam2/Vocabulary/ORBvoc.txt", wait_till_ready=False
-        )
-    except ImportError:
-        tracker = NullTracker()
-
-    try:
-        # Yield the tracker so that it can be used by the with statement.
-        yield tracker
-    finally:
-        # At the end of the with statement, terminate the tracker.
-        tracker.terminate()
-
-
-# noinspection PyUnresolvedReferences
 def main():
     np.set_printoptions(suppress=True)
 
@@ -69,16 +20,9 @@ def main():
     )
     args: dict = vars(parser.parse_args())
 
-    # Connect to the drone, show the video stream from its camera, and track the pose using ORB-SLAM (if available).
-    kwargs: Dict[str, dict] = {
-        "ardrone2": dict(print_commands=False, print_control_messages=False, print_navdata_messages=False),
-        "tello": dict(print_commands=False, print_responses=False, print_state_messages=False)
-    }
-
-    drone_type: str = args.get("drone_type")
-
-    height: float = 1.5
-    offset: float = 0.0705
+    # Set up a relocaliser that uses an ArUco marker of a known size and at a known height to relocalise.
+    height: float = 1.5  # 1.5m (the height of the centre of the printed marker)
+    offset: float = 0.0705  # 7.05cm (half the width of the printed marker)
     relocaliser: ArUcoPnPRelocaliser = ArUcoPnPRelocaliser({
         "0_0": np.array([-offset, -(height + offset), 0]),
         "0_1": np.array([offset, -(height + offset), 0]),
@@ -86,10 +30,22 @@ def main():
         "0_3": np.array([-offset, -(height - offset), 0])
     })
 
+    # Connect to the drone.
+    kwargs: Dict[str, dict] = {
+        "ardrone2": dict(print_commands=False, print_control_messages=False, print_navdata_messages=False),
+        "tello": dict(print_commands=False, print_responses=False, print_state_messages=False)
+    }
+
+    drone_type: str = args.get("drone_type")
+
     with DroneFactory.make_drone(drone_type, **kwargs[drone_type]) as drone:
-        with make_tracker(drone_type) as tracker:
-            reference_tracker_c_t_w = None
-            reference_relocaliser_c_t_w = None
+        # Track the pose of the drone using ORB-SLAM.
+        with MonocularTracker(
+            settings_file=f"settings-{drone_type}.yaml", use_viewer=True,
+            voc_file="C:/orbslam2/Vocabulary/ORBvoc.txt", wait_till_ready=False
+        ) as tracker:
+            reference_tracker_w_t_c = None
+            reference_relocaliser_w_t_c = None
 
             scale: float = 1.0
             scale_estimates: List[float] = []
@@ -103,40 +59,39 @@ def main():
                     break
 
                 if tracker.is_ready():
-                    # TODO: Check whether the wTc and cTw are the right way round.
-                    tracker_w_t_c: np.ndarray = tracker.estimate_pose(image)
+                    tracker_c_t_w: np.ndarray = tracker.estimate_pose(image)
 
-                    relocaliser_c_t_w: np.ndarray = relocaliser.estimate_pose(
+                    relocaliser_w_t_c: np.ndarray = relocaliser.estimate_pose(
                         image, drone.get_intrinsics(), draw_detections=True, print_correspondences=False
                     )
 
-                    if tracker_w_t_c is not None:
-                        tracker_c_t_w: np.ndarray = np.linalg.inv(tracker_w_t_c)
+                    if tracker_c_t_w is not None:
+                        tracker_w_t_c: np.ndarray = np.linalg.inv(tracker_c_t_w)
 
                         if c == ord('m') or showing_poses:
                             showing_poses = True
                             print("===BEGIN===")
-                            if relocaliser_c_t_w is not None:
+                            if relocaliser_w_t_c is not None:
                                 print("Relocaliser Pose:")
-                                print(relocaliser_c_t_w)
-                            if reference_tracker_c_t_w is not None:
+                                print(relocaliser_w_t_c)
+                            if reference_tracker_w_t_c is not None:
                                 print("Tracker Pose:")
-                                scaled_reference_tracker_c_t_w: np.ndarray = reference_tracker_c_t_w.copy()
-                                scaled_reference_tracker_c_t_w[0:3, :] *= scale
-                                scaled_tracker_c_t_w: np.ndarray = tracker_c_t_w.copy()
-                                scaled_tracker_c_t_w[0:3, :] *= scale
-                                print(scaled_tracker_c_t_w @ np.linalg.inv(scaled_reference_tracker_c_t_w) @ reference_relocaliser_c_t_w)
+                                scaled_reference_tracker_w_t_c: np.ndarray = reference_tracker_w_t_c.copy()
+                                scaled_reference_tracker_w_t_c[0:3, :] *= scale
+                                scaled_tracker_w_t_c: np.ndarray = tracker_w_t_c.copy()
+                                scaled_tracker_w_t_c[0:3, :] *= scale
+                                print(scaled_tracker_w_t_c @ np.linalg.inv(scaled_reference_tracker_w_t_c) @ reference_relocaliser_w_t_c)
                             print("===END===")
-                        elif relocaliser_c_t_w is not None:
+                        elif relocaliser_w_t_c is not None:
                             if c == ord('n'):
-                                reference_tracker_c_t_w = tracker_c_t_w
-                                reference_relocaliser_c_t_w = relocaliser_c_t_w
+                                reference_tracker_w_t_c = tracker_w_t_c
+                                reference_relocaliser_w_t_c = relocaliser_w_t_c
                                 scale_estimates.clear()
                                 scale = 1.0
 
-                            if reference_relocaliser_c_t_w is not None:
-                                tracker_offset = tracker_c_t_w[0:3, 3] - reference_tracker_c_t_w[0:3, 3]
-                                relocaliser_offset = relocaliser_c_t_w[0:3, 3] - reference_relocaliser_c_t_w[0:3, 3]
+                            if reference_relocaliser_w_t_c is not None:
+                                tracker_offset = tracker_w_t_c[0:3, 3] - reference_tracker_w_t_c[0:3, 3]
+                                relocaliser_offset = relocaliser_w_t_c[0:3, 3] - reference_relocaliser_w_t_c[0:3, 3]
                                 min_norm: float = 0.1
                                 if np.linalg.norm(relocaliser_offset) >= min_norm:
                                     scale_estimate: float = np.linalg.norm(relocaliser_offset) / np.linalg.norm(tracker_offset)
