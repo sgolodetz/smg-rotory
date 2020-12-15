@@ -503,7 +503,7 @@ class ARDrone2(Drone):
                 print(f"Control Message ({len(control_message)}): {control_message}")
 
     def __process_heartbeats(self) -> None:
-        """TODO"""
+        """Send regular messages (including flight control messages) to keep the drone awake."""
         while not self.__should_terminate:
             # Sleep for 30 milliseconds.
             time.sleep(0.03)
@@ -511,7 +511,8 @@ class ARDrone2(Drone):
             # Send a COMWDG command to the drone to keep it awake.
             self.__send_command("COMWDG")
 
-            # TODO
+            # Decide whether or not the drone should be in hover mode, based on the magnitudes of the control inputs.
+            # Hover mode helps to keep the drone stable (and is thus preferred) when the control inputs are all small.
             eps: float = 0.1
             hover: bool = math.fabs(self.__rc_forward) < eps \
                 and math.fabs(self.__rc_right) < eps \
@@ -519,13 +520,8 @@ class ARDrone2(Drone):
                 and math.fabs(self.__rc_yaw) < eps
             flag: int = 0 if hover else 1
 
-            # TODO
-            print(flag, self.__rc_right, self.__rc_forward, self.__rc_up, self.__rc_yaw)
-            # print(ARDrone2.__make_at_command(
-            #     "PCMD", -1, flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
-            # )
+            # Send a PCMD command to the drone to tell it how we want it to move.
             self.__send_command("PCMD", flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
-            # self.__send_command("PCMD", flag, self.__rc_right, -self.__rc_forward, self.__rc_up, self.__rc_yaw)
 
     def __process_navdata_messages(self) -> None:
         """Process navdata messages sent by the drone."""
