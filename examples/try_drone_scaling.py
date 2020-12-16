@@ -21,7 +21,7 @@ def main():
     args: dict = vars(parser.parse_args())
 
     # Set up a relocaliser that uses an ArUco marker of a known size and at a known height to relocalise.
-    height: float = 1.285  # 1.285m (the height of the centre of the printed marker)
+    height: float = 1.5  # 1.5m (the height of the centre of the printed marker)
     offset: float = 0.0705  # 7.05cm (half the width of the printed marker)
     relocaliser: ArUcoPnPRelocaliser = ArUcoPnPRelocaliser({
         "0_0": np.array([-offset, -(height + offset), 0]),
@@ -57,15 +57,15 @@ def main():
                     break
 
                 if tracker.is_ready():
-                    tracker_c_t_w: np.ndarray = tracker.estimate_pose(image)
-                    if tracker_c_t_w is None:
+                    tracker_c_t_i: np.ndarray = tracker.estimate_pose(image)
+                    if tracker_c_t_i is None:
                         continue
 
                     relocaliser_w_t_c: np.ndarray = relocaliser.estimate_pose(
                         image, drone.get_intrinsics(), draw_detections=True, print_correspondences=False
                     )
 
-                    tracker_w_t_c: np.ndarray = np.linalg.inv(tracker_c_t_w)
+                    tracker_i_t_c: np.ndarray = np.linalg.inv(tracker_c_t_i)
 
                     if c == ord('m') or showing_poses:
                         showing_poses = True
@@ -75,13 +75,14 @@ def main():
                             print(relocaliser_w_t_c)
                         if corrector.has_reference():
                             print("Corrected Tracker Pose:")
-                            print(corrector.apply(tracker_w_t_c))
+                            tracker_w_t_c: np.ndarray = corrector.apply(tracker_i_t_c)
+                            print(tracker_w_t_c)
                         print("===END===")
                     elif relocaliser_w_t_c is not None:
                         if c == ord('n'):
-                            corrector.set_reference(tracker_w_t_c, relocaliser_w_t_c)
+                            corrector.set_reference(tracker_i_t_c, relocaliser_w_t_c)
                         if corrector.has_reference():
-                            corrector.try_add_scale_estimate(tracker_w_t_c, relocaliser_w_t_c)
+                            corrector.try_add_scale_estimate(tracker_i_t_c, relocaliser_w_t_c)
 
 
 if __name__ == "__main__":
