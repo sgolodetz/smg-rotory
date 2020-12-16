@@ -5,7 +5,7 @@ from argparse import ArgumentParser
 from typing import Dict
 
 from smg.pyorbslam2 import MonocularTracker
-from smg.relocalisation import ArUcoPnPRelocaliser, MonocularPoseCorrector
+from smg.relocalisation import ArUcoPnPRelocaliser, MonocularPoseGlobaliser
 from smg.rotory import DroneFactory
 
 
@@ -30,8 +30,8 @@ def main():
         "0_3": np.array([-offset, -(height - offset), 0])
     })
 
-    # Construct a monocular pose corrector.
-    corrector: MonocularPoseCorrector = MonocularPoseCorrector(debug=True)
+    # Construct a monocular pose globaliser.
+    globaliser: MonocularPoseGlobaliser = MonocularPoseGlobaliser(debug=True)
 
     # Connect to the drone.
     kwargs: Dict[str, dict] = {
@@ -73,16 +73,16 @@ def main():
                         if relocaliser_w_t_c is not None:
                             print("Relocaliser Pose:")
                             print(relocaliser_w_t_c)
-                        if corrector.has_reference():
+                        if globaliser.has_reference():
                             print("Corrected Tracker Pose:")
-                            tracker_w_t_c: np.ndarray = corrector.apply(tracker_i_t_c)
+                            tracker_w_t_c: np.ndarray = globaliser.apply(tracker_i_t_c)
                             print(tracker_w_t_c)
                         print("===END===")
                     elif relocaliser_w_t_c is not None:
                         if c == ord('n'):
-                            corrector.set_reference(tracker_i_t_c, relocaliser_w_t_c)
-                        if corrector.has_reference():
-                            corrector.try_add_scale_estimate(tracker_i_t_c, relocaliser_w_t_c)
+                            globaliser.set_reference_space(tracker_i_t_c, relocaliser_w_t_c)
+                        if globaliser.has_reference():
+                            globaliser.try_add_scale_estimate(tracker_i_t_c, relocaliser_w_t_c)
 
 
 if __name__ == "__main__":
