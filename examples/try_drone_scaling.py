@@ -68,7 +68,7 @@ def main():
                     tracker_i_t_c: np.ndarray = np.linalg.inv(tracker_c_t_i)
 
                     tracker_w_t_c: Optional[np.ndarray] = None
-                    if globaliser.has_reference():
+                    if globaliser.has_reference_space():
                         tracker_w_t_c = globaliser.apply(tracker_i_t_c)
 
                     if c == ord('m'):
@@ -88,7 +88,7 @@ def main():
                     elif relocaliser_w_t_c is not None:
                         if c == ord('n'):
                             globaliser.set_reference_space(tracker_i_t_c, relocaliser_w_t_c)
-                        if globaliser.has_reference():
+                        if globaliser.has_reference_space():
                             globaliser.try_add_scale_estimate(tracker_i_t_c, relocaliser_w_t_c)
 
 
