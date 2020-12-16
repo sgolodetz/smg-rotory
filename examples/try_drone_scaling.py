@@ -74,7 +74,7 @@ def main():
                     if c == ord('m'):
                         showing_poses = True
                     elif c == ord('f'):
-                        globaliser.fix_height(tracker_w_t_c)
+                        globaliser.set_fixed_height(tracker_w_t_c)
 
                     if showing_poses:
                         print("===BEGIN===")
