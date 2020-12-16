@@ -2,7 +2,7 @@ import cv2
 import numpy as np
 
 from argparse import ArgumentParser
-from typing import Dict
+from typing import Dict, Optional
 
 from smg.pyorbslam2 import MonocularTracker
 from smg.relocalisation import ArUcoPnPRelocaliser, MonocularPoseGlobaliser
@@ -67,15 +67,22 @@ def main():
 
                     tracker_i_t_c: np.ndarray = np.linalg.inv(tracker_c_t_i)
 
-                    if c == ord('m') or showing_poses:
+                    tracker_w_t_c: Optional[np.ndarray] = None
+                    if globaliser.has_reference():
+                        tracker_w_t_c = globaliser.apply(tracker_i_t_c)
+
+                    if c == ord('m'):
                         showing_poses = True
+                    elif c == ord('f'):
+                        globaliser.fix_height(tracker_w_t_c)
+
+                    if showing_poses:
                         print("===BEGIN===")
                         if relocaliser_w_t_c is not None:
                             print("Relocaliser Pose:")
                             print(relocaliser_w_t_c)
-                        if globaliser.has_reference():
-                            print("Corrected Tracker Pose:")
-                            tracker_w_t_c: np.ndarray = globaliser.apply(tracker_i_t_c)
+                        if tracker_w_t_c is not None:
+                            print("Tracker Pose:")
                             print(tracker_w_t_c)
                         print("===END===")
                     elif relocaliser_w_t_c is not None:
