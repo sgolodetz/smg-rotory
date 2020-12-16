@@ -81,7 +81,7 @@ def main():
                         if c == ord('n'):
                             corrector.set_reference(tracker_w_t_c, relocaliser_w_t_c)
                         if corrector.has_reference():
-                            corrector.calibrate(tracker_w_t_c, relocaliser_w_t_c)
+                            corrector.try_add_scale_estimate(tracker_w_t_c, relocaliser_w_t_c)
 
 
 if __name__ == "__main__":
