@@ -5,9 +5,8 @@ from argparse import ArgumentParser
 from typing import Dict
 
 from smg.pyorbslam2 import MonocularTracker
-from smg.relocalisation import ArUcoPnPRelocaliser
+from smg.relocalisation import ArUcoPnPRelocaliser, MonocularPoseCorrector
 from smg.rotory import DroneFactory
-from smg.rotory.util.monocular_pose_corrector import MonocularPoseCorrector
 
 
 def main():
