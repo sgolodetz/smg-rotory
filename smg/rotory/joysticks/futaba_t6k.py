@@ -14,7 +14,7 @@ class FutabaT6K:
 
     # PRIVATE VARIABLES
 
-    # The dead zone threshold. Outputs whose absolute value is smaller than this will be set to zero.
+    """The dead zone threshold. Outputs whose absolute value is smaller than this will be set to zero."""
     __dead_zone_threshold: float = None
 
     """The joystick device."""
