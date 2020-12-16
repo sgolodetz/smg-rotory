@@ -5,7 +5,8 @@ from argparse import ArgumentParser
 from typing import Dict, Optional
 
 from smg.pyorbslam2 import MonocularTracker
-from smg.relocalisation import ArUcoPnPRelocaliser, MonocularPoseGlobaliser
+from smg.relocalisation import ArUcoPnPRelocaliser
+from smg.relocalisation.poseglobalisers import MonocularPoseGlobaliser
 from smg.rotory import DroneFactory
 
 
@@ -31,7 +32,7 @@ def main():
     })
 
     # Construct a monocular pose globaliser.
-    globaliser: MonocularPoseGlobaliser = MonocularPoseGlobaliser(debug=True)
+    pose_globaliser: MonocularPoseGlobaliser = MonocularPoseGlobaliser(debug=True)
 
     # Connect to the drone.
     kwargs: Dict[str, dict] = {
@@ -47,7 +48,7 @@ def main():
             settings_file=f"settings-{drone_type}.yaml", use_viewer=True,
             voc_file="C:/orbslam2/Vocabulary/ORBvoc.txt", wait_till_ready=False
         ) as tracker:
-            showing_poses = False
+            showing_poses: bool = False
 
             while True:
                 image: np.ndarray = drone.get_image()
@@ -61,20 +62,20 @@ def main():
                     if tracker_c_t_i is None:
                         continue
 
+                    tracker_i_t_c: np.ndarray = np.linalg.inv(tracker_c_t_i)
+
+                    tracker_w_t_c: Optional[np.ndarray] = None
+                    if pose_globaliser.has_reference_space():
+                        tracker_w_t_c = pose_globaliser.apply(tracker_i_t_c)
+
                     relocaliser_w_t_c: np.ndarray = relocaliser.estimate_pose(
                         image, drone.get_intrinsics(), draw_detections=True, print_correspondences=False
                     )
 
-                    tracker_i_t_c: np.ndarray = np.linalg.inv(tracker_c_t_i)
-
-                    tracker_w_t_c: Optional[np.ndarray] = None
-                    if globaliser.has_reference_space():
-                        tracker_w_t_c = globaliser.apply(tracker_i_t_c)
-
                     if c == ord('m'):
                         showing_poses = True
                     elif c == ord('f'):
-                        globaliser.set_fixed_height(tracker_w_t_c)
+                        pose_globaliser.set_fixed_height(tracker_w_t_c)
 
                     if showing_poses:
                         print("===BEGIN===")
@@ -87,9 +88,9 @@ def main():
                         print("===END===")
                     elif relocaliser_w_t_c is not None:
                         if c == ord('n'):
-                            globaliser.set_reference_space(tracker_i_t_c, relocaliser_w_t_c)
-                        if globaliser.has_reference_space():
-                            globaliser.try_add_scale_estimate(tracker_i_t_c, relocaliser_w_t_c)
+                            pose_globaliser.set_reference_space(tracker_i_t_c, relocaliser_w_t_c)
+                        if pose_globaliser.has_reference_space():
+                            pose_globaliser.try_add_scale_estimate(tracker_i_t_c, relocaliser_w_t_c)
 
 
 if __name__ == "__main__":
