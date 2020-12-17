@@ -4,6 +4,7 @@ import cv2
 import numpy as np
 
 from argparse import ArgumentParser
+from typing import Dict
 
 from smg.rotory import DroneFactory
 
@@ -56,7 +57,6 @@ def make_tracker(drone_type: str):
         tracker.terminate()
 
 
-# noinspection PyUnresolvedReferences
 def main():
     # Parse any command-line arguments.
     parser = ArgumentParser()
