@@ -113,13 +113,13 @@ def main() -> None:
                     if relocaliser_w_t_c is not None:
                         pose_globaliser.train(tracker_i_t_c, relocaliser_w_t_c)
 
-                    # If the user presses 'm', terminate the globaliser's training process.
-                    if c == ord('m'):
+                    # If the user presses 'r', terminate the globaliser's training process.
+                    if c == ord('r'):
                         pose_globaliser.finish_training()
                 elif state == MonocularPoseGlobaliser.UNTRAINED:
-                    # If the pose globaliser's training hasn't started yet, the user presses 'n' and the relocaliser
+                    # If the pose globaliser's training hasn't started yet, the user presses 't' and the relocaliser
                     # produced a pose for this frame, use the two current poses to start the training process.
-                    if c == ord('n') and relocaliser_w_t_c is not None:
+                    if c == ord('t') and relocaliser_w_t_c is not None:
                         pose_globaliser.start_training(tracker_i_t_c, relocaliser_w_t_c)
 
 
