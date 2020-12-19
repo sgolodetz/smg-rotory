@@ -14,9 +14,9 @@ from collections import namedtuple
 from distutils.util import strtobool
 from typing import Dict, List, NamedTuple, Optional, Tuple, Type
 
-from smg.rotory.drones.drone import Drone
-from smg.rotory.net.udp_link import UDPLink
-from smg.rotory.util.bits_util import BitsUtil
+from .drone import Drone
+from ..net.udp_link import UDPLink
+from ..util.bits_util import BitsUtil
 
 
 class ARDrone2(Drone):

@@ -3,7 +3,8 @@ import numpy as np
 from typing import cast, Optional, Tuple
 
 from smg.imagesources import RGBImageSource
-from smg.rotory.drones.drone import Drone
+
+from .drones.drone import Drone
 
 
 class DroneRGBImageSource(RGBImageSource):

@@ -7,8 +7,8 @@ import time
 
 from typing import Dict, Mapping, Optional, Tuple
 
-from smg.rotory.drones.drone import Drone
-from smg.rotory.net.udp_link import UDPLink
+from .drone import Drone
+from ..net.udp_link import UDPLink
 
 
 class Tello(Drone):
