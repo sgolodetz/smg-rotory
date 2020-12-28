@@ -115,7 +115,7 @@ class FutabaT6K:
         Since the left-hand rocker on my Futaba T6K is a fixed-wing one, using these
         values to control up/down movement would be dangerous, so I don't currently.
 
-        :return:    The throttle implied by the current axis values (in [-1,1]).
+        :return:    The throttle implied by the current axis values (in [0,1]).
         """
         return self.__output_value(3, 0, 1)
 
