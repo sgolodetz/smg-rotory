@@ -62,8 +62,10 @@ class FutabaT6K:
         clock = pygame.time.Clock()
 
         # Allow the user to move the rockers around to explore the range of values available.
-        # Stop when Button 1 on the Futaba T6K is set to its "pressed" state and calibration has succeeded.
-        while self.__device.get_button(1) != 1 or self.get_pitch() != 0 or self.get_roll() != 0 or self.get_yaw() != 0:
+        # Stop when Button 0 is set to its "released" state, Button 1 is set to its "pressed" state,
+        # and calibration has succeeded.
+        while self.__device.get_button(0) != 0 or self.__device.get_button(1) != 1 \
+                or self.get_pitch() != 0 or self.get_roll() != 0 or self.get_yaw() != 0:
             # Process and ignore any pygame events.
             for _ in pygame.event.get():
                 pass
