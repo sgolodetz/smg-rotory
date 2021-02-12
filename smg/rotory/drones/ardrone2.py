@@ -131,7 +131,8 @@ class ARDrone2(Drone):
                                             data.
         :param dist_coeffs:                 Optional distortion coefficients to use to undistort the images.
         :param intrinsics:                  Optional camera intrinsics, as (fx, fy, cx, cy) tuples.
-        :param navdata_endpoint:            The remote endpoint (IP address and port) from which to receive navigation data.
+        :param navdata_endpoint:            The remote endpoint (IP address and port) from which to receive navigation
+                                            data.
         :param print_commands:              Whether or not to print commands that are sent.
         :param print_control_messages:      Whether or not to print control messages.
         :param print_navdata_messages:      Whether or not to print navdata messages.
