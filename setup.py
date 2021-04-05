@@ -18,7 +18,6 @@ setup(
         "av",
         "numpy",
         "opencv-contrib-python==3.4.2.16",
-        "pygame",
         "smg-imagesources"
     ],
     classifiers=[
