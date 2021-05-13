@@ -1,5 +1,6 @@
 from .drones.ardrone2 import ARDrone2
 from .drones.drone import Drone
+from .drones.simulated_drone import SimulatedDrone
 from .drones.tello import Tello
 
 
@@ -19,6 +20,8 @@ class DroneFactory:
         """
         if drone_type == "ardrone2":
             return ARDrone2(**kwargs)
+        elif drone_type == "simulated":
+            return SimulatedDrone(**kwargs)
         elif drone_type == "tello":
             return Tello(**kwargs)
         else:
