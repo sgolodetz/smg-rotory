@@ -1,5 +1,6 @@
 import numpy as np
 import threading
+import time
 
 from typing import Callable, Optional, Tuple
 
@@ -9,11 +10,15 @@ from .drone import Drone
 class SimulatedDrone(Drone):
     """An interface that can be used to control a simulated drone."""
 
+    # TYPE ALIASES
+
+    ImageRenderer = Callable[[np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
+
     # CONSTRUCTOR
 
-    def __init__(self, *, image_renderer: Callable[[np.ndarray], np.ndarray], image_size: Tuple[int, int],
+    def __init__(self, *, image_renderer: ImageRenderer, image_size: Tuple[int, int],
                  intrinsics: Tuple[float, float, float, float]):
-        self.__image_renderer: Callable[[np.ndarray], np.ndarray] = image_renderer
+        self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer
         self.__image_size: Tuple[int, int] = image_size
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
         self.__should_terminate: threading.Event = threading.Event()
@@ -56,11 +61,11 @@ class SimulatedDrone(Drone):
 
         :return:    The most recent image received from the drone.
         """
-        return self.__image_renderer(self.get_pose())
+        return self.__image_renderer(self.get_pose(), self.__image_size, self.__intrinsics)
 
     def get_image_and_pose(self) -> Tuple[np.ndarray, np.ndarray]:
         w_t_c: np.ndarray = self.get_pose()
-        return self.__image_renderer(w_t_c), w_t_c
+        return self.__image_renderer(w_t_c, self.__image_size, self.__intrinsics), w_t_c
 
     def get_image_size(self) -> Tuple[int, int]:
         """
@@ -153,3 +158,5 @@ class SimulatedDrone(Drone):
         while not self.__should_terminate.is_set():
             with self.__simulation_lock:
                 pass
+
+            time.sleep(0.01)
