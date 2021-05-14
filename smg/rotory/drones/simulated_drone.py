@@ -196,10 +196,26 @@ class SimulatedDrone(Drone):
 
             linear_gain: float = 0.01
             angular_gain: float = 0.01
+
             camera_cam.move_n(linear_gain * rc_forward)
             camera_cam.move_u(-linear_gain * rc_right)
-            camera_cam.move_v(linear_gain * rc_up)
             camera_cam.rotate(camera_cam.v(), -angular_gain * rc_yaw)
+
+            if state == SimulatedDrone.TAKING_OFF:
+                if camera_cam.p()[1] > -1.0:
+                    camera_cam.move_v(linear_gain * 0.5)
+                else:
+                    state = SimulatedDrone.FLYING
+            elif state == SimulatedDrone.FLYING:
+                camera_cam.move_v(linear_gain * rc_up)
+            elif state == SimulatedDrone.LANDING:
+                if camera_cam.p()[1] < 0.0:
+                    camera_cam.move_v(-linear_gain * 0.5)
+                else:
+                    state = SimulatedDrone.IDLE
+
+            with self.__control_lock:
+                self.__state = state
 
             drone_cam: SimpleCamera = CameraUtil.make_default_camera()
             drone_cam.set_from(camera_cam)
