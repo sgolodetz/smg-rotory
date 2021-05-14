@@ -105,7 +105,8 @@ class SimulatedDrone(Drone):
 
         :param rate:     The rate at which the drone should move forward (in [-1,1]).
         """
-        pass
+        with self.__control_lock:
+            self.__rc_forward = rate
 
     def move_right(self, rate: float) -> None:
         """
@@ -116,7 +117,8 @@ class SimulatedDrone(Drone):
 
         :param rate:    The rate at which the drone should move to the right (in [-1,1]).
         """
-        pass
+        with self.__control_lock:
+            self.__rc_right = rate
 
     def move_up(self, rate: float) -> None:
         """
@@ -127,7 +129,8 @@ class SimulatedDrone(Drone):
 
         :param rate:    The rate at which the drone should move up (in [-1,1]).
         """
-        pass
+        with self.__control_lock:
+            self.__rc_up = rate
 
     def set_pose(self, w_t_c: np.ndarray) -> None:
         with self.__pose_lock:
@@ -155,7 +158,8 @@ class SimulatedDrone(Drone):
 
         :param rate:    The rate at which the drone should turn (in [-1,1]).
         """
-        pass
+        with self.__control_lock:
+            self.__rc_yaw = rate
 
     # PRIVATE METHODS
 
@@ -169,12 +173,12 @@ class SimulatedDrone(Drone):
                 rc_up: float = self.__rc_up
                 rc_yaw: float = self.__rc_yaw
 
-            rc_forward = -1.0
-            rc_up = 1.0
-            rc_yaw = -1.0
+            # rc_forward = -1.0
+            # rc_up = 1.0
+            # rc_yaw = -1.0
 
-            linear_gain: float = 0.001
-            angular_gain: float = 0.001
+            linear_gain: float = 0.01
+            angular_gain: float = 0.01
             camera.move_n(linear_gain * rc_forward)
             camera.move_u(-linear_gain * rc_right)
             camera.move_v(linear_gain * rc_up)
