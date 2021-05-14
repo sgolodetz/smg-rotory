@@ -4,6 +4,9 @@ import time
 
 from typing import Callable, Optional, Tuple
 
+from smg.rigging.cameras import SimpleCamera
+from smg.rigging.helpers import CameraPoseConverter, CameraUtil
+
 from .drone import Drone
 
 
@@ -23,12 +26,14 @@ class SimulatedDrone(Drone):
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
         self.__should_terminate: threading.Event = threading.Event()
 
-        # The simulation variables, together with their lock.
+        # The simulation variables, together with their locks.
         self.__rc_forward: float = 0.0
         self.__rc_right: float = 0.0
         self.__rc_up: float = 0.0
         self.__rc_yaw: float = 0.0
-        self.__simulation_lock: threading.Lock = threading.Lock()
+        self.__control_lock: threading.Lock = threading.Lock()
+        self.__pose_lock: threading.Lock = threading.Lock()
+        # self.__simulation_lock: threading.Lock = threading.Lock()
         self.__w_t_c: np.ndarray = np.eye(4)
 
         # Start the simulation.
@@ -84,7 +89,7 @@ class SimulatedDrone(Drone):
         return self.__intrinsics
 
     def get_pose(self) -> np.ndarray:
-        with self.__simulation_lock:
+        with self.__pose_lock:
             return self.__w_t_c.copy()
 
     def land(self) -> None:
@@ -125,7 +130,7 @@ class SimulatedDrone(Drone):
         pass
 
     def set_pose(self, w_t_c: np.ndarray) -> None:
-        with self.__simulation_lock:
+        with self.__pose_lock:
             self.__w_t_c = w_t_c.copy()
 
     def stop(self) -> None:
@@ -155,8 +160,27 @@ class SimulatedDrone(Drone):
     # PRIVATE METHODS
 
     def __process_simulation(self) -> None:
+        camera: SimpleCamera = CameraUtil.make_default_camera()
+
         while not self.__should_terminate.is_set():
-            with self.__simulation_lock:
-                pass
+            with self.__control_lock:
+                rc_forward: float = self.__rc_forward
+                rc_right: float = self.__rc_right
+                rc_up: float = self.__rc_up
+                rc_yaw: float = self.__rc_yaw
+
+            rc_forward = -1.0
+            rc_up = 1.0
+            rc_yaw = -1.0
+
+            linear_gain: float = 0.001
+            angular_gain: float = 0.001
+            camera.move_n(linear_gain * rc_forward)
+            camera.move_u(-linear_gain * rc_right)
+            camera.move_v(linear_gain * rc_up)
+            camera.rotate(camera.v(), -angular_gain * rc_yaw)
+
+            with self.__pose_lock:
+                self.__w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(camera))
 
             time.sleep(0.01)

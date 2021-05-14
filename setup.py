@@ -18,7 +18,8 @@ setup(
         "av",
         "numpy",
         "opencv-contrib-python==3.4.2.16",
-        "smg-imagesources"
+        "smg-imagesources",
+        "smg-rigging"
     ],
     classifiers=[
         "Programming Language :: Python :: 3",
