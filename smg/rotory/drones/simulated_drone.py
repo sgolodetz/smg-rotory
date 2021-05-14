@@ -1,9 +1,11 @@
+import math
 import numpy as np
 import threading
 import time
 import vg
 
-from typing import Callable, Optional, Tuple
+from collections import deque
+from typing import Callable, Deque, Optional, Tuple
 
 from smg.rigging.cameras import SimpleCamera
 from smg.rigging.helpers import CameraPoseConverter, CameraUtil
@@ -35,6 +37,8 @@ class SimulatedDrone(Drone):
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer
         self.__image_size: Tuple[int, int] = image_size
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
+        self.__rc_gimbal_enabled: bool = False
+        self.__rc_gimbal_history: Deque[float] = deque()
         self.__should_terminate: threading.Event = threading.Event()
 
         # The simulation variables, together with their locks.
@@ -44,6 +48,7 @@ class SimulatedDrone(Drone):
 
         self.__control_lock: threading.Lock = threading.Lock()
         self.__rc_forward: float = 0.0
+        self.__rc_gimbal: float = 0.0
         self.__rc_right: float = 0.0
         self.__rc_up: float = 0.0
         self.__rc_yaw: float = 0.0
@@ -147,6 +152,19 @@ class SimulatedDrone(Drone):
         with self.__control_lock:
             self.__rc_up = rate
 
+    def set_gimbal(self, value: float) -> None:
+        self.__rc_gimbal_history.append(value)
+        if len(self.__rc_gimbal_history) > 10:
+            self.__rc_gimbal_history.popleft()
+
+        avg_value: float = np.mean(self.__rc_gimbal_history)
+        if avg_value >= 0.5:
+            self.__rc_gimbal_enabled = True
+
+        if self.__rc_gimbal_enabled:
+            with self.__control_lock:
+                self.__rc_gimbal = 2 * math.pi/2 * (avg_value - 0.5)
+
     def set_pose(self, w_t_c: np.ndarray) -> None:
         with self.__pose_lock:
             self.__camera_w_t_c = w_t_c.copy()
@@ -184,44 +202,50 @@ class SimulatedDrone(Drone):
             return self.__camera_w_t_c.copy(), self.__drone_w_t_c.copy()
 
     def __process_simulation(self) -> None:
-        camera_cam: SimpleCamera = CameraUtil.make_default_camera()
+        camera: SimpleCamera = CameraUtil.make_default_camera()
 
         while not self.__should_terminate.is_set():
             with self.__control_lock:
                 rc_forward: float = self.__rc_forward
+                rc_gimbal: float = self.__rc_gimbal
                 rc_right: float = self.__rc_right
                 rc_up: float = self.__rc_up
                 rc_yaw: float = self.__rc_yaw
                 state: SimulatedDrone.EState = self.__state
 
-            linear_gain: float = 0.01
-            angular_gain: float = 0.01
+            linear_gain: float = 0.02
+            angular_gain: float = 0.02
 
-            camera_cam.move_n(linear_gain * rc_forward)
-            camera_cam.move_u(-linear_gain * rc_right)
-            camera_cam.rotate(camera_cam.v(), -angular_gain * rc_yaw)
+            if state != SimulatedDrone.IDLE:
+                camera.move_n(linear_gain * rc_forward)
+                camera.move_u(-linear_gain * rc_right)
+                camera.rotate(camera.v(), -angular_gain * rc_yaw)
 
             if state == SimulatedDrone.TAKING_OFF:
-                if camera_cam.p()[1] > -1.0:
-                    camera_cam.move_v(linear_gain * 0.5)
+                if camera.p()[1] > -1.0:
+                    camera.move_v(linear_gain * 0.5)
                 else:
                     state = SimulatedDrone.FLYING
             elif state == SimulatedDrone.FLYING:
-                camera_cam.move_v(linear_gain * rc_up)
+                camera.move_v(linear_gain * rc_up)
             elif state == SimulatedDrone.LANDING:
-                if camera_cam.p()[1] < 0.0:
-                    camera_cam.move_v(-linear_gain * 0.5)
+                if camera.p()[1] < 0.0:
+                    camera.move_v(-linear_gain * 0.5)
                 else:
                     state = SimulatedDrone.IDLE
 
             with self.__control_lock:
                 self.__state = state
 
+            camera_cam: SimpleCamera = CameraUtil.make_default_camera()
+            camera_cam.set_from(camera)
+            camera_cam.rotate(camera.u(), -rc_gimbal)
+
             drone_cam: SimpleCamera = CameraUtil.make_default_camera()
-            drone_cam.set_from(camera_cam)
+            drone_cam.set_from(camera)
 
             if state != SimulatedDrone.IDLE:
-                drone_cam.rotate(camera_cam.n(), np.random.normal(0.0, 0.01))
+                drone_cam.rotate(camera.n(), np.random.normal(0.0, 0.01))
                 direction: np.ndarray = np.random.normal(0.0, 1.0, 3)
                 length_squared: float = np.dot(direction, direction)
                 if length_squared > 0.0:
