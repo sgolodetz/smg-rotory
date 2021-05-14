@@ -18,6 +18,16 @@ class SimulatedDrone(Drone):
 
     ImageRenderer = Callable[[np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
 
+    # NESTED TYPES
+
+    class EState(int):
+        pass
+
+    IDLE: EState = EState(0)
+    TAKING_OFF: EState = EState(1)
+    FLYING: EState = EState(2)
+    LANDING: EState = EState(3)
+
     # CONSTRUCTOR
 
     def __init__(self, *, image_renderer: ImageRenderer, image_size: Tuple[int, int],
@@ -30,13 +40,14 @@ class SimulatedDrone(Drone):
         # The simulation variables, together with their locks.
         self.__camera_w_t_c: np.ndarray = np.eye(4)
         self.__drone_w_t_c: np.ndarray = np.eye(4)
-        self.__control_lock: threading.Lock = threading.Lock()
-
         self.__pose_lock: threading.Lock = threading.Lock()
+
+        self.__control_lock: threading.Lock = threading.Lock()
         self.__rc_forward: float = 0.0
         self.__rc_right: float = 0.0
         self.__rc_up: float = 0.0
         self.__rc_yaw: float = 0.0
+        self.__state: SimulatedDrone.EState = SimulatedDrone.IDLE
 
         # Start the simulation.
         self.__simulation_thread: threading.Thread = threading.Thread(target=self.__process_simulation)
@@ -91,9 +102,14 @@ class SimulatedDrone(Drone):
         """
         return self.__intrinsics
 
+    def get_state(self) -> EState:
+        with self.__control_lock:
+            return self.__state
+
     def land(self) -> None:
         """Tell the drone to land."""
-        pass
+        with self.__control_lock:
+            self.__state = SimulatedDrone.LANDING
 
     def move_forward(self, rate: float) -> None:
         """
@@ -141,7 +157,8 @@ class SimulatedDrone(Drone):
 
     def takeoff(self) -> None:
         """Tell the drone to take off."""
-        pass
+        with self.__control_lock:
+            self.__state = SimulatedDrone.TAKING_OFF
 
     def terminate(self) -> None:
         """Tell the drone to terminate."""
@@ -175,6 +192,7 @@ class SimulatedDrone(Drone):
                 rc_right: float = self.__rc_right
                 rc_up: float = self.__rc_up
                 rc_yaw: float = self.__rc_yaw
+                state: SimulatedDrone.EState = self.__state
 
             linear_gain: float = 0.01
             angular_gain: float = 0.01
@@ -185,13 +203,15 @@ class SimulatedDrone(Drone):
 
             drone_cam: SimpleCamera = CameraUtil.make_default_camera()
             drone_cam.set_from(camera_cam)
-            drone_cam.rotate(camera_cam.n(), np.random.normal(0.0, 0.01))
-            direction: np.ndarray = np.random.normal(0.0, 1.0, 3)
-            length_squared: float = np.dot(direction, direction)
-            if length_squared > 0.0:
-                direction = vg.normalize(direction)
-            delta: float = np.random.normal(0.0, 0.001)
-            drone_cam.move(direction, delta)
+
+            if state != SimulatedDrone.IDLE:
+                drone_cam.rotate(camera_cam.n(), np.random.normal(0.0, 0.01))
+                direction: np.ndarray = np.random.normal(0.0, 1.0, 3)
+                length_squared: float = np.dot(direction, direction)
+                if length_squared > 0.0:
+                    direction = vg.normalize(direction)
+                delta: float = np.random.normal(0.0, 0.001)
+                drone_cam.move(direction, delta)
 
             with self.__pose_lock:
                 self.__camera_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(camera_cam))
