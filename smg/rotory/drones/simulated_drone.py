@@ -1,6 +1,7 @@
 import numpy as np
 import threading
 import time
+import vg
 
 from typing import Callable, Optional, Tuple
 
@@ -27,14 +28,15 @@ class SimulatedDrone(Drone):
         self.__should_terminate: threading.Event = threading.Event()
 
         # The simulation variables, together with their locks.
+        self.__camera_w_t_c: np.ndarray = np.eye(4)
+        self.__drone_w_t_c: np.ndarray = np.eye(4)
+        self.__control_lock: threading.Lock = threading.Lock()
+
+        self.__pose_lock: threading.Lock = threading.Lock()
         self.__rc_forward: float = 0.0
         self.__rc_right: float = 0.0
         self.__rc_up: float = 0.0
         self.__rc_yaw: float = 0.0
-        self.__control_lock: threading.Lock = threading.Lock()
-        self.__pose_lock: threading.Lock = threading.Lock()
-        # self.__simulation_lock: threading.Lock = threading.Lock()
-        self.__w_t_c: np.ndarray = np.eye(4)
 
         # Start the simulation.
         self.__simulation_thread: threading.Thread = threading.Thread(target=self.__process_simulation)
@@ -66,11 +68,12 @@ class SimulatedDrone(Drone):
 
         :return:    The most recent image received from the drone.
         """
-        return self.__image_renderer(self.get_pose(), self.__image_size, self.__intrinsics)
+        camera_w_t_c, drone_w_t_c = self.__get_poses()
+        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics)
 
-    def get_image_and_pose(self) -> Tuple[np.ndarray, np.ndarray]:
-        w_t_c: np.ndarray = self.get_pose()
-        return self.__image_renderer(w_t_c, self.__image_size, self.__intrinsics), w_t_c
+    def get_image_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        camera_w_t_c, drone_w_t_c = self.__get_poses()
+        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics), camera_w_t_c, drone_w_t_c
 
     def get_image_size(self) -> Tuple[int, int]:
         """
@@ -87,10 +90,6 @@ class SimulatedDrone(Drone):
         :return:    The camera intrinsics as an (fx, fy, cx, cy) tuple, if known, or None otherwise.
         """
         return self.__intrinsics
-
-    def get_pose(self) -> np.ndarray:
-        with self.__pose_lock:
-            return self.__w_t_c.copy()
 
     def land(self) -> None:
         """Tell the drone to land."""
@@ -134,7 +133,7 @@ class SimulatedDrone(Drone):
 
     def set_pose(self, w_t_c: np.ndarray) -> None:
         with self.__pose_lock:
-            self.__w_t_c = w_t_c.copy()
+            self.__camera_w_t_c = w_t_c.copy()
 
     def stop(self) -> None:
         """Tell the drone to stop in mid-air."""
@@ -163,8 +162,12 @@ class SimulatedDrone(Drone):
 
     # PRIVATE METHODS
 
+    def __get_poses(self) -> Tuple[np.ndarray, np.ndarray]:
+        with self.__pose_lock:
+            return self.__camera_w_t_c.copy(), self.__drone_w_t_c.copy()
+
     def __process_simulation(self) -> None:
-        camera: SimpleCamera = CameraUtil.make_default_camera()
+        camera_cam: SimpleCamera = CameraUtil.make_default_camera()
 
         while not self.__should_terminate.is_set():
             with self.__control_lock:
@@ -173,18 +176,25 @@ class SimulatedDrone(Drone):
                 rc_up: float = self.__rc_up
                 rc_yaw: float = self.__rc_yaw
 
-            # rc_forward = -1.0
-            # rc_up = 1.0
-            # rc_yaw = -1.0
-
             linear_gain: float = 0.01
             angular_gain: float = 0.01
-            camera.move_n(linear_gain * rc_forward)
-            camera.move_u(-linear_gain * rc_right)
-            camera.move_v(linear_gain * rc_up)
-            camera.rotate(camera.v(), -angular_gain * rc_yaw)
+            camera_cam.move_n(linear_gain * rc_forward)
+            camera_cam.move_u(-linear_gain * rc_right)
+            camera_cam.move_v(linear_gain * rc_up)
+            camera_cam.rotate(camera_cam.v(), -angular_gain * rc_yaw)
+
+            drone_cam: SimpleCamera = CameraUtil.make_default_camera()
+            drone_cam.set_from(camera_cam)
+            drone_cam.rotate(camera_cam.n(), np.random.normal(0.0, 0.01))
+            direction: np.ndarray = np.random.normal(0.0, 1.0, 3)
+            length_squared: float = np.dot(direction, direction)
+            if length_squared > 0.0:
+                direction = vg.normalize(direction)
+            delta: float = np.random.normal(0.0, 0.001)
+            drone_cam.move(direction, delta)
 
             with self.__pose_lock:
-                self.__w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(camera))
+                self.__camera_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(camera_cam))
+                self.__drone_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(drone_cam))
 
             time.sleep(0.01)
