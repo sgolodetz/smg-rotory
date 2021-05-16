@@ -42,36 +42,40 @@ class SimulatedDrone(Drone):
     # CONSTRUCTOR
 
     def __init__(self, *, image_renderer: ImageRenderer, image_size: Tuple[int, int],
-                 intrinsics: Tuple[float, float, float, float]):
+                 intrinsics: Tuple[float, float, float, float],
+                 linear_gain: float = 0.02, angular_gain: float = 0.02):
         """
         Construct a simulated drone.
 
         :param image_renderer:  A function that can be used to render a synthetic image of what the drone can see
-                                from its current pose.
+                                from the current pose of its gimbal.
         :param image_size:      The size of the synthetic images that should be rendered for the drone, as a
                                 (width, height) tuple.
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
                                 as an (fx, fy, cx, cy) tuple.
+        :param linear_gain:     TODO
+        :param angular_gain:    TODO
         """
-        self.__gimbal_enabled: bool = False
-        self.__gimbal_history: Deque[float] = deque()
+        self.__gimbal_input_history: Deque[float] = deque()
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer
         self.__image_size: Tuple[int, int] = image_size
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
+        self.__linear_gain: float = linear_gain
+        self.__angular_gain: float = angular_gain
         self.__should_terminate: threading.Event = threading.Event()
 
         # The simulation variables, together with their locks.
-        self.__camera_w_t_c: np.ndarray = np.eye(4)
-        self.__drone_w_t_c: np.ndarray = np.eye(4)
-        self.__pose_lock: threading.Lock = threading.Lock()
-
-        self.__control_lock: threading.Lock = threading.Lock()
-        self.__gimbal: float = 0.0
+        self.__gimbal_pitch: float = 0.0
         self.__rc_forward: float = 0.0
         self.__rc_right: float = 0.0
         self.__rc_up: float = 0.0
         self.__rc_yaw: float = 0.0
         self.__state: SimulatedDrone.EState = SimulatedDrone.IDLE
+        self.__input_lock: threading.Lock = threading.Lock()
+
+        self.__chassis_w_t_c: np.ndarray = np.eye(4)
+        self.__gimbal_w_t_c: np.ndarray = np.eye(4)
+        self.__output_lock: threading.Lock = threading.Lock()
 
         # Start the simulation.
         self.__simulation_thread: threading.Thread = threading.Thread(target=self.__process_simulation)
@@ -103,23 +107,22 @@ class SimulatedDrone(Drone):
 
         :return:    The most recent image received from the drone.
         """
-        camera_w_t_c, _ = self.__get_poses()
-        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics)
+        gimbal_w_t_c, _ = self.__get_poses()
+        return self.__image_renderer(gimbal_w_t_c, self.__image_size, self.__intrinsics)
 
     def get_image_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Get the most recent image received from the drone, together with the poses of the drone's camera and the
-        drone itself.
+        Get the most recent image received from the drone, together with the poses of the drone's gimbal and chassis.
 
         .. note::
-            The drone and its camera have separate poses to allow the drone to wobble around in the air and thereby
-            make the simulation look a bit more realistic.
+            In our simulation, the drone's gimbal and chassis have separate poses to allow the drone to wobble around
+            in the air and thereby make the simulation look a bit more realistic.
 
-        :return:    The most recent image received from the drone, together with the poses of the drone's camera
-                    and the drone itself, as an (image, camera pose, drone pose) tuple.
+        :return:    The most recent image received from the drone, together with the poses of the drone's gimbal
+                    and chassis, as an (image, gimbal pose, chassis pose) tuple.
         """
-        camera_w_t_c, drone_w_t_c = self.__get_poses()
-        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics), camera_w_t_c, drone_w_t_c
+        gimbal_w_t_c, chassis_w_t_c = self.__get_poses()
+        return self.__image_renderer(gimbal_w_t_c, self.__image_size, self.__intrinsics), gimbal_w_t_c, chassis_w_t_c
 
     def get_image_size(self) -> Tuple[int, int]:
         """
@@ -143,12 +146,12 @@ class SimulatedDrone(Drone):
 
         :return:    The current state of the drone.
         """
-        with self.__control_lock:
+        with self.__input_lock:
             return self.__state
 
     def land(self) -> None:
         """Tell the drone to land."""
-        with self.__control_lock:
+        with self.__input_lock:
             self.__state = SimulatedDrone.LANDING
 
     def move_forward(self, rate: float) -> None:
@@ -160,7 +163,7 @@ class SimulatedDrone(Drone):
 
         :param rate:     The rate at which the drone should move forward (in [-1,1]).
         """
-        with self.__control_lock:
+        with self.__input_lock:
             self.__rc_forward = rate
 
     def move_right(self, rate: float) -> None:
@@ -172,7 +175,7 @@ class SimulatedDrone(Drone):
 
         :param rate:    The rate at which the drone should move to the right (in [-1,1]).
         """
-        with self.__control_lock:
+        with self.__input_lock:
             self.__rc_right = rate
 
     def move_up(self, rate: float) -> None:
@@ -184,12 +187,12 @@ class SimulatedDrone(Drone):
 
         :param rate:    The rate at which the drone should move up (in [-1,1]).
         """
-        with self.__control_lock:
+        with self.__input_lock:
             self.__rc_up = rate
 
     def stop(self) -> None:
         """Tell the drone to stop in mid-air."""
-        with self.__control_lock:
+        with self.__input_lock:
             self.__rc_forward = 0
             self.__rc_right = 0
             self.__rc_up = 0
@@ -197,7 +200,7 @@ class SimulatedDrone(Drone):
 
     def takeoff(self) -> None:
         """Tell the drone to take off."""
-        with self.__control_lock:
+        with self.__input_lock:
             self.__state = SimulatedDrone.TAKING_OFF
 
     def terminate(self) -> None:
@@ -214,121 +217,112 @@ class SimulatedDrone(Drone):
 
         :param rate:    The rate at which the drone should turn (in [-1,1]).
         """
-        with self.__control_lock:
+        with self.__input_lock:
             self.__rc_yaw = rate
 
-    def update_gimbal(self, value: float) -> None:
+    def update_gimbal_pitch(self, gimbal_input: float) -> None:
         """
         Update the pitch of the drone's gimbal.
 
         .. note::
             We assume the drone has a gimbal that can be pitched so as to look up/down.
         .. note::
-            This function doesn't update the pitch of the drone's gimbal directly, since we don't want jerky
-            input values to make the view oscillate up and down. Instead, it adds values to a gimbal history
-            of bounded size. The pitch of the gimbal is actually set to be the mean of the most recent values
-            added to this history, which allows it to be changed smoothly over time, albeit with a bit of lag.
+            This function doesn't update the pitch of the drone's gimbal directly, since we don't want jerky gimbal
+            input values to make the view oscillate up and down. Instead, it adds gimbal input values to a history
+            of max size N. The pitch of the gimbal is then set to be the mean of the most recent <= N values added
+            to this history, which allows it to be changed smoothly over time, albeit with a bit of lag.
 
-        :param value:   The value to add to the gimbal history (in [-1,1]).
+        :param gimbal_input:   The value to add to the gimbal history (in [-1,1], where -1 = down and 1 = up).
         """
         # Add the value to the gimbal history. If that makes the gimbal history too big, discard the oldest value.
-        self.__gimbal_history.append(value)
-        if len(self.__gimbal_history) > 10:
-            self.__gimbal_history.popleft()
+        self.__gimbal_input_history.append(gimbal_input)
+        if len(self.__gimbal_input_history) > 10:
+            self.__gimbal_input_history.popleft()
 
-        # Compute the new gimbal value.
-        gimbal: float = np.mean(self.__gimbal_history) * math.pi / 2
-
-        # Enable the gimbal the first time the user tries to look at or above the horizon.
-        # FIXME: This is a hack to allow the gimbal to be controlled by a throttle that starts out in the
-        #        completely down position. The hack prevents the camera from initially pointing downwards.
-        if gimbal >= 0:
-            self.__gimbal_enabled = True
-
-        # If the gimbal's enabled, set its value.
-        if self.__gimbal_enabled:
-            with self.__control_lock:
-                self.__gimbal = gimbal
+        # Compute and set the new gimbal pitch.
+        gimbal_pitch: float = np.mean(self.__gimbal_input_history) * math.pi / 2
+        with self.__input_lock:
+            self.__gimbal_pitch = gimbal_pitch
 
     # PRIVATE METHODS
 
     def __get_poses(self) -> Tuple[np.ndarray, np.ndarray]:
         """
-        TODO
+        Get the poses of the drone's gimbal and chassis.
 
-        :return:    TODO
+        :return:    The poses of the drone's gimbal and chassis, as a (gimbal pose, chassis pose) tuple.
         """
-        with self.__pose_lock:
-            return self.__camera_w_t_c.copy(), self.__drone_w_t_c.copy()
+        with self.__output_lock:
+            return self.__gimbal_w_t_c.copy(), self.__chassis_w_t_c.copy()
 
     def __process_simulation(self) -> None:
         """Run the simulation thread."""
-        # TODO
-        linear_gain: float = 0.02
-        angular_gain: float = 0.02
+        # Construct the camera corresponding to the master pose for the drone (the poses of its gimbal and chassis
+        # will be derived from this each frame).
+        master_cam: SimpleCamera = CameraUtil.make_default_camera()
 
-        # TODO
-        camera: SimpleCamera = CameraUtil.make_default_camera()
-
-        # TODO
+        # Until the simulation should terminate:
         while not self.__should_terminate.is_set():
-            # TODO
-            with self.__control_lock:
-                gimbal: float = self.__gimbal
+            # Make a copy of the inputs so that we only need to hold the lock very briefly.
+            with self.__input_lock:
+                gimbal_pitch: float = self.__gimbal_pitch
                 rc_forward: float = self.__rc_forward
                 rc_right: float = self.__rc_right
                 rc_up: float = self.__rc_up
                 rc_yaw: float = self.__rc_yaw
                 state: SimulatedDrone.EState = self.__state
 
-            # TODO
+            # Provided the drone's not stationary on the ground, process any horizontal movements that are requested.
             if state != SimulatedDrone.IDLE:
-                camera.move_n(linear_gain * rc_forward)
-                camera.move_u(-linear_gain * rc_right)
-                camera.rotate(camera.v(), -angular_gain * rc_yaw)
+                master_cam.move_n(self.__linear_gain * rc_forward)
+                master_cam.move_u(-self.__linear_gain * rc_right)
+                master_cam.rotate(master_cam.v(), -self.__angular_gain * rc_yaw)
 
-            # TODO
+            # Depending on the drone's state:
             if state == SimulatedDrone.TAKING_OFF:
-                # TODO
-                if camera.p()[1] > -1.0:
-                    camera.move_v(linear_gain * 0.5)
+                # If the drone's taking off, move it upwards at a constant rate until it's 1m off the ground,
+                # then switch to the flying state. (Note that y points downwards in our coordinate system!)
+                if master_cam.p()[1] > -1.0:
+                    master_cam.move_v(self.__linear_gain * 0.5)
                 else:
                     state = SimulatedDrone.FLYING
             elif state == SimulatedDrone.FLYING:
-                # TODO
-                camera.move_v(linear_gain * rc_up)
+                # If the drone's flying, process any vertical movements that are requested.
+                master_cam.move_v(self.__linear_gain * rc_up)
             elif state == SimulatedDrone.LANDING:
-                # TODO
-                if camera.p()[1] < 0.0:
-                    camera.move_v(-linear_gain * 0.5)
+                # If the drone's landing, move it downwards at a constant rate until it's on the ground,
+                # then switch to the idle state. (Note that y points downwards in our coordinate system!)
+                if master_cam.p()[1] < 0.0:
+                    master_cam.move_v(-self.__linear_gain * 0.5)
                 else:
                     state = SimulatedDrone.IDLE
 
-            # TODO
-            with self.__control_lock:
+            # Update the global version of the state to actually effect the state change.
+            with self.__input_lock:
                 self.__state = state
 
-            # TODO
-            camera_cam: SimpleCamera = CameraUtil.make_default_camera()
-            camera_cam.set_from(camera)
-            camera_cam.rotate(camera.u(), -gimbal)
+            # Construct a camera corresponding to the pose of the drone's gimbal.
+            gimbal_cam: SimpleCamera = CameraUtil.make_default_camera()
+            gimbal_cam.set_from(master_cam)
+            gimbal_cam.rotate(master_cam.u(), -gimbal_pitch)
 
-            # TODO
-            drone_cam: SimpleCamera = CameraUtil.make_default_camera()
-            drone_cam.set_from(camera)
+            # Construct a camera corresponding to the pose of the drone's chassis. Provided we're not in the idle
+            # state, this is derived by adding some Gaussian noise to the master pose.
+            chassis_cam: SimpleCamera = CameraUtil.make_default_camera()
+            chassis_cam.set_from(master_cam)
             if state != SimulatedDrone.IDLE:
-                drone_cam.rotate(camera.n(), np.random.normal(0.0, 0.01))
+                chassis_cam.rotate(master_cam.n(), np.random.normal(0.0, 0.01))
                 direction: np.ndarray = np.random.normal(0.0, 1.0, 3)
                 length_squared: float = np.dot(direction, direction)
                 if length_squared > 0.0:
                     direction = vg.normalize(direction)
                 delta: float = np.random.normal(0.0, 0.001)
-                drone_cam.move(direction, delta)
+                chassis_cam.move(direction, delta)
 
-            # TODO
-            with self.__pose_lock:
-                self.__camera_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(camera_cam))
-                self.__drone_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(drone_cam))
+            # Update the the poses of the drone's gimbal and chassis.
+            with self.__output_lock:
+                self.__gimbal_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(gimbal_cam))
+                self.__chassis_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(chassis_cam))
 
-            # TODO
+            # Wait momentarily before processing the next iteration of the simulation.
             time.sleep(0.01)
