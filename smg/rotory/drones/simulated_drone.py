@@ -53,15 +53,15 @@ class SimulatedDrone(Drone):
                                 (width, height) tuple.
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
                                 as an (fx, fy, cx, cy) tuple.
-        :param linear_gain:     TODO
-        :param angular_gain:    TODO
+        :param linear_gain:     The amount by which to multiply the control inputs for linear movements of the drone.
+        :param angular_gain:    The amount by which to multiply the control inputs for angular movements of the drone.
         """
+        self.__angular_gain: float = angular_gain
         self.__gimbal_input_history: Deque[float] = deque()
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer
         self.__image_size: Tuple[int, int] = image_size
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
         self.__linear_gain: float = linear_gain
-        self.__angular_gain: float = angular_gain
         self.__should_terminate: threading.Event = threading.Event()
 
         # The simulation variables, together with their locks.
@@ -324,5 +324,5 @@ class SimulatedDrone(Drone):
                 self.__camera_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(camera_cam))
                 self.__chassis_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(chassis_cam))
 
-            # Wait momentarily before processing the next iteration of the simulation.
+            # Wait momentarily to avoid a spin loop before processing the next iteration of the simulation.
             time.sleep(0.01)
