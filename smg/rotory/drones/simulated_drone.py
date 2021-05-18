@@ -48,7 +48,7 @@ class SimulatedDrone(Drone):
         Construct a simulated drone.
 
         :param image_renderer:  A function that can be used to render a synthetic image of what the drone can see
-                                from the current pose of its gimbal.
+                                from the current pose of its camera.
         :param image_size:      The size of the synthetic images that should be rendered for the drone, as a
                                 (width, height) tuple.
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
@@ -73,8 +73,8 @@ class SimulatedDrone(Drone):
         self.__state: SimulatedDrone.EState = SimulatedDrone.IDLE
         self.__input_lock: threading.Lock = threading.Lock()
 
+        self.__camera_w_t_c: np.ndarray = np.eye(4)
         self.__chassis_w_t_c: np.ndarray = np.eye(4)
-        self.__gimbal_w_t_c: np.ndarray = np.eye(4)
         self.__output_lock: threading.Lock = threading.Lock()
 
         # Start the simulation.
@@ -107,22 +107,22 @@ class SimulatedDrone(Drone):
 
         :return:    The most recent image received from the drone.
         """
-        gimbal_w_t_c, _ = self.__get_poses()
-        return self.__image_renderer(gimbal_w_t_c, self.__image_size, self.__intrinsics)
+        camera_w_t_c, _ = self.__get_poses()
+        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics)
 
     def get_image_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
-        Get the most recent image received from the drone, together with the poses of the drone's gimbal and chassis.
+        Get the most recent image received from the drone, together with the poses of the drone's camera and chassis.
 
         .. note::
-            In our simulation, the drone's gimbal and chassis have separate poses to allow the drone to wobble around
+            In our simulation, the drone's camera and chassis have separate poses to allow the drone to wobble around
             in the air and thereby make the simulation look a bit more realistic.
 
-        :return:    The most recent image received from the drone, together with the poses of the drone's gimbal
-                    and chassis, as an (image, gimbal pose, chassis pose) tuple.
+        :return:    The most recent image received from the drone, together with the poses of the drone's camera
+                    and chassis, as an (image, camera pose, chassis pose) tuple.
         """
-        gimbal_w_t_c, chassis_w_t_c = self.__get_poses()
-        return self.__image_renderer(gimbal_w_t_c, self.__image_size, self.__intrinsics), gimbal_w_t_c, chassis_w_t_c
+        camera_w_t_c, chassis_w_t_c = self.__get_poses()
+        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics), camera_w_t_c, chassis_w_t_c
 
     def get_image_size(self) -> Tuple[int, int]:
         """
@@ -248,16 +248,16 @@ class SimulatedDrone(Drone):
 
     def __get_poses(self) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Get the poses of the drone's gimbal and chassis.
+        Get the poses of the drone's camera and chassis.
 
-        :return:    The poses of the drone's gimbal and chassis, as a (gimbal pose, chassis pose) tuple.
+        :return:    The poses of the drone's camera and chassis, as a (camera pose, chassis pose) tuple.
         """
         with self.__output_lock:
-            return self.__gimbal_w_t_c.copy(), self.__chassis_w_t_c.copy()
+            return self.__camera_w_t_c.copy(), self.__chassis_w_t_c.copy()
 
     def __process_simulation(self) -> None:
         """Run the simulation thread."""
-        # Construct the camera corresponding to the master pose for the drone (the poses of its gimbal and chassis
+        # Construct the camera corresponding to the master pose for the drone (the poses of its camera and chassis
         # will be derived from this each frame).
         master_cam: SimpleCamera = CameraUtil.make_default_camera()
 
@@ -301,10 +301,10 @@ class SimulatedDrone(Drone):
             with self.__input_lock:
                 self.__state = state
 
-            # Construct a camera corresponding to the pose of the drone's gimbal.
-            gimbal_cam: SimpleCamera = CameraUtil.make_default_camera()
-            gimbal_cam.set_from(master_cam)
-            gimbal_cam.rotate(master_cam.u(), -gimbal_pitch)
+            # Construct a camera corresponding to the pose of the drone's camera.
+            camera_cam: SimpleCamera = CameraUtil.make_default_camera()
+            camera_cam.set_from(master_cam)
+            camera_cam.rotate(master_cam.u(), -gimbal_pitch)
 
             # Construct a camera corresponding to the pose of the drone's chassis. Provided we're not in the idle
             # state, this is derived by adding some Gaussian noise to the master pose.
@@ -319,9 +319,9 @@ class SimulatedDrone(Drone):
                 delta: float = np.random.normal(0.0, 0.001)
                 chassis_cam.move(direction, delta)
 
-            # Update the the poses of the drone's gimbal and chassis.
+            # Update the the poses of the drone's camera and chassis.
             with self.__output_lock:
-                self.__gimbal_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(gimbal_cam))
+                self.__camera_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(camera_cam))
                 self.__chassis_w_t_c = np.linalg.inv(CameraPoseConverter.camera_to_pose(chassis_cam))
 
             # Wait momentarily before processing the next iteration of the simulation.
