@@ -47,8 +47,9 @@ class SimulatedDrone(Drone):
         """
         Construct a simulated drone.
 
-        :param image_renderer:  A function that can be used to render a synthetic image of what the drone can see
-                                from the current pose of its camera.
+        :param image_renderer:  An optional function that can be used to render a synthetic image of what the drone
+                                can see from the current pose of its camera. If None, a blank image will be rendered
+                                by default.
         :param image_size:      The size of the synthetic images that should be rendered for the drone, as a
                                 (width, height) tuple.
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
