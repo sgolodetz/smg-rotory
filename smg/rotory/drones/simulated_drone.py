@@ -41,15 +41,14 @@ class SimulatedDrone(Drone):
 
     # CONSTRUCTOR
 
-    def __init__(self, *, image_renderer: Optional[ImageRenderer], image_size: Tuple[int, int],
+    def __init__(self, *, image_renderer: ImageRenderer, image_size: Tuple[int, int],
                  intrinsics: Tuple[float, float, float, float],
                  linear_gain: float = 0.02, angular_gain: float = 0.02):
         """
         Construct a simulated drone.
 
-        :param image_renderer:  An optional function that can be used to render a synthetic image of what the drone
-                                can see from the current pose of its camera. If None, a blank image will be rendered
-                                by default.
+        :param image_renderer:  A function that can be used to render a synthetic image of what the drone can see
+                                from the current pose of its camera.
         :param image_size:      The size of the synthetic images that should be rendered for the drone, as a
                                 (width, height) tuple.
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
@@ -59,8 +58,7 @@ class SimulatedDrone(Drone):
         """
         self.__angular_gain: float = angular_gain
         self.__gimbal_input_history: Deque[float] = deque()
-        self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer \
-            if image_renderer is not None else SimulatedDrone.__blank_image_renderer(image_size)
+        self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer
         self.__image_size: Tuple[int, int] = image_size
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
         self.__linear_gain: float = linear_gain
@@ -328,23 +326,3 @@ class SimulatedDrone(Drone):
 
             # Wait momentarily to avoid a spin loop before processing the next iteration of the simulation.
             time.sleep(0.01)
-
-    # PRIVATE STATIC METHODS
-
-    @staticmethod
-    def __blank_image_renderer(image_size: Tuple[int, int]) -> ImageRenderer:
-        """
-        TODO
-
-        :param image_size:  TODO
-        :return:            TODO
-        """
-        def inner(_1, _2, _3) -> np.ndarray:
-            """
-            TODO
-
-            :return:    TODO
-            """
-            width, height = image_size
-            return np.zeros((height, width, 3), dtype=np.uint8)
-        return inner
