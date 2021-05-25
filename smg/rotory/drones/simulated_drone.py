@@ -18,8 +18,9 @@ class SimulatedDrone(Drone):
 
     # TYPE ALIASES
 
-    # A function that takes a pose, an image size and some intrinsics, and renders an image.
-    ImageRenderer = Callable[[np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
+    # A function that takes the drone's camera and chassis poses (in that order), an image size and some intrinsics,
+    # and renders an image.
+    ImageRenderer = Callable[[np.ndarray, np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
 
     # NESTED TYPES
 
@@ -115,8 +116,8 @@ class SimulatedDrone(Drone):
 
         :return:    The most recent image received from the drone.
         """
-        camera_w_t_c, _ = self.__get_poses()
-        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics)
+        camera_w_t_c, chassis_w_t_c = self.__get_poses()
+        return self.__image_renderer(camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics)
 
     def get_image_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -130,7 +131,9 @@ class SimulatedDrone(Drone):
                     and chassis, as an (image, camera pose, chassis pose) tuple.
         """
         camera_w_t_c, chassis_w_t_c = self.__get_poses()
-        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics), camera_w_t_c, chassis_w_t_c
+        return self.__image_renderer(
+            camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics
+        ), camera_w_t_c, chassis_w_t_c
 
     def get_image_size(self) -> Tuple[int, int]:
         """
