@@ -7,7 +7,7 @@ import vg
 from collections import deque
 from typing import Callable, Deque, Optional, Tuple
 
-from smg.rigging.cameras import SimpleCamera
+from smg.rigging.cameras import Camera, SimpleCamera
 from smg.rigging.helpers import CameraPoseConverter, CameraUtil
 
 from .drone import Drone
@@ -18,8 +18,9 @@ class SimulatedDrone(Drone):
 
     # TYPE ALIASES
 
-    # A function that takes a pose, an image size and some intrinsics, and renders an image.
-    ImageRenderer = Callable[[np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
+    # A function that takes the drone's camera and chassis poses (in that order), an image size and some intrinsics,
+    # and renders an image.
+    ImageRenderer = Callable[[np.ndarray, np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
 
     # NESTED TYPES
 
@@ -41,12 +42,17 @@ class SimulatedDrone(Drone):
 
     # CONSTRUCTOR
 
-    def __init__(self, *, image_renderer: ImageRenderer, image_size: Tuple[int, int],
-                 intrinsics: Tuple[float, float, float, float],
-                 linear_gain: float = 0.02, angular_gain: float = 0.02):
+    def __init__(self, *, angular_gain: float = 0.02, drone_origin: Optional[SimpleCamera] = None,
+                 image_renderer: ImageRenderer, image_size: Tuple[int, int],
+                 intrinsics: Tuple[float, float, float, float], linear_gain: float = 0.02):
         """
         Construct a simulated drone.
 
+        .. note::
+            If drone_origin is set to None, the initial origin for the drone will be the world-space origin.
+
+        :param angular_gain:    The amount by which to multiply the control inputs for angular movements of the drone.
+        :param drone_origin:    The initial origin for the drone (optional).
         :param image_renderer:  A function that can be used to render a synthetic image of what the drone can see
                                 from the current pose of its camera.
         :param image_size:      The size of the synthetic images that should be rendered for the drone, as a
@@ -54,7 +60,6 @@ class SimulatedDrone(Drone):
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
                                 as an (fx, fy, cx, cy) tuple.
         :param linear_gain:     The amount by which to multiply the control inputs for linear movements of the drone.
-        :param angular_gain:    The amount by which to multiply the control inputs for angular movements of the drone.
         """
         self.__angular_gain: float = angular_gain
         self.__gimbal_input_history: Deque[float] = deque()
@@ -65,6 +70,10 @@ class SimulatedDrone(Drone):
         self.__should_terminate: threading.Event = threading.Event()
 
         # The simulation variables, together with their locks.
+        self.__drone_origin: SimpleCamera = CameraUtil.make_default_camera()
+        if drone_origin is not None:
+            self.__drone_origin.set_from(drone_origin)
+        self.__drone_origin_changed: threading.Event = threading.Event()
         self.__gimbal_pitch: float = 0.0
         self.__rc_forward: float = 0.0
         self.__rc_right: float = 0.0
@@ -73,8 +82,8 @@ class SimulatedDrone(Drone):
         self.__state: SimulatedDrone.EState = SimulatedDrone.IDLE
         self.__input_lock: threading.Lock = threading.Lock()
 
-        self.__camera_w_t_c: np.ndarray = np.eye(4)
-        self.__chassis_w_t_c: np.ndarray = np.eye(4)
+        self.__camera_w_t_c: np.ndarray = CameraPoseConverter.camera_to_pose(self.__drone_origin)
+        self.__chassis_w_t_c: np.ndarray = self.__camera_w_t_c.copy()
         self.__output_lock: threading.Lock = threading.Lock()
 
         # Start the simulation.
@@ -107,8 +116,8 @@ class SimulatedDrone(Drone):
 
         :return:    The most recent image received from the drone.
         """
-        camera_w_t_c, _ = self.__get_poses()
-        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics)
+        camera_w_t_c, chassis_w_t_c = self.__get_poses()
+        return self.__image_renderer(camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics)
 
     def get_image_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """
@@ -122,7 +131,9 @@ class SimulatedDrone(Drone):
                     and chassis, as an (image, camera pose, chassis pose) tuple.
         """
         camera_w_t_c, chassis_w_t_c = self.__get_poses()
-        return self.__image_renderer(camera_w_t_c, self.__image_size, self.__intrinsics), camera_w_t_c, chassis_w_t_c
+        return self.__image_renderer(
+            camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics
+        ), camera_w_t_c, chassis_w_t_c
 
     def get_image_size(self) -> Tuple[int, int]:
         """
@@ -189,6 +200,22 @@ class SimulatedDrone(Drone):
         """
         with self.__input_lock:
             self.__rc_up = rate
+
+    def set_drone_origin(self, drone_origin: Camera) -> None:
+        """
+        Set the origin for the drone.
+
+        .. note::
+            This can be used to place the drone in a more sensible starting place than the world-space origin.
+
+        :param drone_origin:    The new origin for the drone.
+        """
+        with self.__input_lock:
+            # Update the origin itself.
+            self.__drone_origin.set_from(drone_origin)
+
+            # Record that it has changed, so that the drone can be moved to the new origin whenever it is next idle.
+            self.__drone_origin_changed.set()
 
     def stop(self) -> None:
         """Tell the drone to stop in mid-air."""
@@ -265,12 +292,20 @@ class SimulatedDrone(Drone):
         while not self.__should_terminate.is_set():
             # Make a copy of the inputs so that we only need to hold the lock very briefly.
             with self.__input_lock:
+                drone_origin: SimpleCamera = CameraUtil.make_default_camera()
+                drone_origin.set_from(self.__drone_origin)
                 gimbal_pitch: float = self.__gimbal_pitch
                 rc_forward: float = self.__rc_forward
                 rc_right: float = self.__rc_right
                 rc_up: float = self.__rc_up
                 rc_yaw: float = self.__rc_yaw
                 state: SimulatedDrone.EState = self.__state
+
+            # If the drone's stationary on the ground and its origin has moved:
+            if state == SimulatedDrone.IDLE and self.__drone_origin_changed.is_set():
+                # Move the drone to its new origin.
+                master_cam.set_from(drone_origin)
+                self.__drone_origin_changed.clear()
 
             # Provided the drone's not stationary on the ground, process any horizontal movements that are requested.
             if state != SimulatedDrone.IDLE:
@@ -282,7 +317,7 @@ class SimulatedDrone(Drone):
             if state == SimulatedDrone.TAKING_OFF:
                 # If the drone's taking off, move it upwards at a constant rate until it's 1m off the ground,
                 # then switch to the flying state. (Note that y points downwards in our coordinate system!)
-                if master_cam.p()[1] > -1.0:
+                if master_cam.p()[1] - drone_origin.p()[1] > -1.0:
                     master_cam.move_v(self.__linear_gain * 0.5)
                 else:
                     state = SimulatedDrone.FLYING
@@ -292,7 +327,7 @@ class SimulatedDrone(Drone):
             elif state == SimulatedDrone.LANDING:
                 # If the drone's landing, move it downwards at a constant rate until it's on the ground,
                 # then switch to the idle state. (Note that y points downwards in our coordinate system!)
-                if master_cam.p()[1] < 0.0:
+                if master_cam.p()[1] - drone_origin.p()[1] < 0.0:
                     master_cam.move_v(-self.__linear_gain * 0.5)
                 else:
                     state = SimulatedDrone.IDLE
