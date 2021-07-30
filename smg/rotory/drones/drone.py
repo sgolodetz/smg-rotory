@@ -106,3 +106,13 @@ class Drone(ABC):
         :param rate:    The rate at which the drone should turn (in [-1,1]).
         """
         pass
+
+    # PUBLIC METHODS
+
+    def get_height(self) -> Optional[int]:
+        """
+        Try to get the drone's height (in cm).
+
+        :return:    The most recently received value of the drone's height (in cm), if available, or None otherwise.
+        """
+        return None

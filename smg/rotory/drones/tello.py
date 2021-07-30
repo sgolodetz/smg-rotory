@@ -108,6 +108,16 @@ class Tello(Drone):
             bat: Optional[str] = self.__state_map.get("bat")
             return int(bat) if bat is not None else None
 
+    def get_height(self) -> Optional[int]:
+        """
+        Try to get the drone's height (in cm).
+
+        :return:    The most recently received value of the drone's height (in cm), if available, or None otherwise.
+        """
+        with self.__state_lock:
+            height: Optional[str] = self.__state_map.get("tof")
+            return int(height) if height is not None else None
+
     def get_image(self) -> np.ndarray:
         """
         Get the most recent image received from the drone.
