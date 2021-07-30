@@ -109,10 +109,10 @@ class Drone(ABC):
 
     # PUBLIC METHODS
 
-    def get_height(self) -> Optional[int]:
+    def get_height(self) -> Optional[float]:
         """
-        Try to get the drone's height (in cm).
+        Try to get the drone's height (in m).
 
-        :return:    The most recently received value of the drone's height (in cm), if available, or None otherwise.
+        :return:    The most recently received value of the drone's height (in m), if available, or None otherwise.
         """
         return None
