@@ -41,6 +41,7 @@ class Tello(Drone):
         self.__dist_coeffs: Optional[np.ndarray] = dist_coeffs
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((720, 960, 3), dtype=np.uint8)
+        self.__front_timestamp: Optional[float] = None
         self.__intrinsics: Optional[Tuple[float, float, float, float]] = intrinsics
         self.__print_commands: bool = print_commands
         self.__print_responses: bool = print_responses
@@ -128,22 +129,8 @@ class Tello(Drone):
 
         :return:    The most recent image received from the drone.
         """
-        with self.__video_lock:
-            while self.__frame_is_pending and not self.__should_terminate:
-                self.__no_pending_frame.wait(0.1)
-
-            image: np.ndarray = self.__front_buffer.copy()
-
-        if self.__intrinsics is not None and self.__dist_coeffs is not None:
-            fx, fy, cx, cy = self.__intrinsics
-            camera_matrix: np.ndarray = np.array([
-                [fx, 0., cx],
-                [0., fy, cy],
-                [0., 0., 1.]
-            ])
-            return cv2.undistort(image, camera_matrix, self.__dist_coeffs)
-        else:
-            return image
+        image, _ = self.get_timed_image()
+        return image
 
     def get_image_size(self) -> Tuple[int, int]:
         """
@@ -169,6 +156,29 @@ class Tello(Drone):
         """
         with self.__state_lock:
             return self.__state_map.copy()
+
+    def get_timed_image(self) -> Tuple[np.ndarray, Optional[float]]:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        with self.__video_lock:
+            while self.__frame_is_pending and not self.__should_terminate:
+                self.__no_pending_frame.wait(0.1)
+
+            image: np.ndarray = self.__front_buffer.copy()
+
+        if self.__intrinsics is not None and self.__dist_coeffs is not None:
+            fx, fy, cx, cy = self.__intrinsics
+            camera_matrix: np.ndarray = np.array([
+                [fx, 0., cx],
+                [0., fy, cy],
+                [0., 0., 1.]
+            ])
+            return cv2.undistort(image, camera_matrix, self.__dist_coeffs), self.__front_timestamp
+        else:
+            return image, self.__front_timestamp
 
     def land(self) -> None:
         """Tell the drone to land."""
@@ -385,6 +395,7 @@ class Tello(Drone):
                 acquired = self.__video_lock.acquire(blocking=False)
                 if acquired:
                     self.__front_buffer = back_buffer
+                    self.__front_timestamp = time.time_ns() / 1000
                     back_buffer = None
                     self.__frame_is_pending = False
                     self.__no_pending_frame.notify_all()
