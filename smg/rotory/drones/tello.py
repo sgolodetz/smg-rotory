@@ -41,7 +41,7 @@ class Tello(Drone):
         self.__dist_coeffs: Optional[np.ndarray] = dist_coeffs
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((720, 960, 3), dtype=np.uint8)
-        self.__front_timestamp: Optional[float] = None
+        self.__image_timestamp: Optional[float] = None
         self.__intrinsics: Optional[Tuple[float, float, float, float]] = intrinsics
         self.__print_commands: bool = print_commands
         self.__print_responses: bool = print_responses
@@ -159,15 +159,20 @@ class Tello(Drone):
 
     def get_timed_image(self) -> Tuple[np.ndarray, Optional[float]]:
         """
-        TODO
+        Get the most recent image received from the drone and its (optional) timestamp.
 
-        :return:    TODO
+        .. note::
+            If the camera intrinsics and distortion coefficients were passed to the constructor,
+            this function will also undistort the image using these before returning it.
+
+        :return:    A pair consisting of the most recent image received from the drone and its (optional) timestamp.
         """
         with self.__video_lock:
             while self.__frame_is_pending and not self.__should_terminate:
                 self.__no_pending_frame.wait(0.1)
 
             image: np.ndarray = self.__front_buffer.copy()
+            image_timestamp: Optional[float] = self.__image_timestamp
 
         if self.__intrinsics is not None and self.__dist_coeffs is not None:
             fx, fy, cx, cy = self.__intrinsics
@@ -176,9 +181,9 @@ class Tello(Drone):
                 [0., fy, cy],
                 [0., 0., 1.]
             ])
-            return cv2.undistort(image, camera_matrix, self.__dist_coeffs), self.__front_timestamp
+            return cv2.undistort(image, camera_matrix, self.__dist_coeffs), image_timestamp
         else:
-            return image, self.__front_timestamp
+            return image, image_timestamp
 
     def land(self) -> None:
         """Tell the drone to land."""
@@ -395,7 +400,7 @@ class Tello(Drone):
                 acquired = self.__video_lock.acquire(blocking=False)
                 if acquired:
                     self.__front_buffer = back_buffer
-                    self.__front_timestamp = time.time_ns() / 1000
+                    self.__image_timestamp = time.time_ns() / 1000
                     back_buffer = None
                     self.__frame_is_pending = False
                     self.__no_pending_frame.notify_all()
