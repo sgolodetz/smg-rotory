@@ -116,3 +116,11 @@ class Drone(ABC):
         :return:    The most recently received value of the drone's height (in m), if available, or None otherwise.
         """
         return None
+
+    def get_timed_image(self) -> Tuple[np.ndarray, Optional[float]]:
+        """
+        Get the most recent image received from the drone and its (optional) timestamp.
+
+        :return:    A pair consisting of the most recent image received from the drone and its (optional) timestamp.
+        """
+        return self.get_image(), None
