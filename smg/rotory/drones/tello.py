@@ -9,6 +9,7 @@ from typing import Dict, Mapping, Optional, Tuple
 
 from .drone import Drone
 from ..net.udp_link import UDPLink
+from ..util.local_ip_detector import LocalIPDetector
 
 
 class Tello(Drone):
@@ -20,7 +21,7 @@ class Tello(Drone):
                  allow_default_intrinsics: bool = True,
                  dist_coeffs: Optional[np.ndarray] = None,
                  intrinsics: Optional[Tuple[float, float, float, float]] = None,
-                 local_ip: str = "192.168.10.2",
+                 local_ip: Optional[str] = None,
                  remote_endpoint: Tuple[str, int] = ("192.168.10.1", 8889),
                  print_commands: bool = False,
                  print_responses: bool = False,
@@ -32,7 +33,7 @@ class Tello(Drone):
                                             didn't manually specify them.
         :param dist_coeffs:                 Optional distortion coefficients to use to undistort the images.
         :param intrinsics:                  Optional camera intrinsics, as an (fx, fy, cx, cy) tuple.
-        :param local_ip:                    The IP address of the local machine.
+        :param local_ip:                    The IP address of the local machine (optional, can be auto-detected).
         :param remote_endpoint:             The remote endpoint (IP address and port) to which to send commands.
         :param print_commands:              Whether or not to print commands that are sent.
         :param print_responses:             Whether or not to print command responses.
@@ -69,6 +70,9 @@ class Tello(Drone):
         self.__pending_response = threading.Condition(self.__cmd_lock)
 
         # Set up the UDP links.
+        if local_ip is None:
+            local_ip = LocalIPDetector.get_ip_starting_with("192.168.10")
+
         self.__cmd_link = UDPLink((local_ip, 8888), remote_endpoint)
         self.__state_link = UDPLink((local_ip, 8890), remote_endpoint)
         self.__video_link = UDPLink((local_ip, 11111), remote_endpoint)
