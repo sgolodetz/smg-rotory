@@ -120,8 +120,9 @@ class Tello(Drone):
         :return:    The most recently received value of the drone's height (in m), if available, or None otherwise.
         """
         with self.__state_lock:
+            arbitrary_constant: float = 1.1
             height_in_cm: Optional[str] = self.__state_map.get("tof")
-            return int(height_in_cm) / 100 if height_in_cm is not None else None
+            return (int(height_in_cm) - 10) * arbitrary_constant / 100 if height_in_cm is not None else None
 
     def get_image(self) -> np.ndarray:
         """
