@@ -20,6 +20,8 @@ class Tello(Drone):
     def __init__(self, *,
                  allow_default_intrinsics: bool = True,
                  dist_coeffs: Optional[np.ndarray] = None,
+                 height_factor: float = 1.1,
+                 height_offset: int = -10,
                  intrinsics: Optional[Tuple[float, float, float, float]] = None,
                  local_ip: Optional[str] = None,
                  remote_endpoint: Tuple[str, int] = ("192.168.10.1", 8889),
@@ -29,9 +31,16 @@ class Tello(Drone):
         """
         Construct a Tello object, which provides a convenient interface to control a DJI Tello drone.
 
+        .. note::
+            We adjust the raw height from the drone's sensor based on empirical observations. The new height
+            is calculated as (old height - height offset) * height factor. In an ideal world, we would obtain
+            the offset and scaling factor by a calibration process, but empirical is where we are for now.
+
         :param allow_default_intrinsics:    Whether or not to use the default camera intrinsics if the user
                                             didn't manually specify them.
         :param dist_coeffs:                 Optional distortion coefficients to use to undistort the images.
+        :param height_factor:               A scaling factor to be applied to the adjusted height.
+        :param height_offset:               An offset to be applied to the height (in cm) before it is scaled.
         :param intrinsics:                  Optional camera intrinsics, as an (fx, fy, cx, cy) tuple.
         :param local_ip:                    The IP address of the local machine (optional, can be auto-detected).
         :param remote_endpoint:             The remote endpoint (IP address and port) to which to send commands.
@@ -42,6 +51,8 @@ class Tello(Drone):
         self.__dist_coeffs: Optional[np.ndarray] = dist_coeffs
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((720, 960, 3), dtype=np.uint8)
+        self.__height_factor: float = height_factor
+        self.__height_offset: int = height_offset
         self.__image_timestamp: Optional[float] = None
         self.__intrinsics: Optional[Tuple[float, float, float, float]] = intrinsics
         self.__print_commands: bool = print_commands
@@ -121,7 +132,8 @@ class Tello(Drone):
         """
         with self.__state_lock:
             height_in_cm: Optional[str] = self.__state_map.get("tof")
-            return int(height_in_cm) / 100 if height_in_cm is not None else None
+            return (int(height_in_cm) + self.__height_offset) * self.__height_factor / 100 \
+                if height_in_cm is not None else None
 
     def get_image(self) -> np.ndarray:
         """
