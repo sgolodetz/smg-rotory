@@ -16,6 +16,7 @@ setup(
     include_package_data=True,
     install_requires=[
         "av",
+        "netifaces",
         "numpy",
         "opencv-contrib-python==3.4.2.16",
         "smg-imagesources",
