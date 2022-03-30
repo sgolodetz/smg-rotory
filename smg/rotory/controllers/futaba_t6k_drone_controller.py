@@ -21,6 +21,7 @@ class FutabaT6KDroneController(DroneController):
         :param drone:       TODO
         :param joystick:    TODO
         """
+        self.__can_move_gimbal: bool = False
         self.__drone: Drone = drone
         self.__joystick: FutabaT6K = joystick
 
@@ -67,3 +68,13 @@ class FutabaT6KDroneController(DroneController):
         else:
             self.__drone.move_right(self.__joystick.get_roll())
             self.__drone.move_up(0)
+
+        # If the throttle goes above half-way, enable movement of the drone's gimbal from now on.
+        throttle: float = self.__joystick.get_throttle()
+        if throttle >= 0.5:
+            self.__can_move_gimbal = True
+
+        # If the drone's gimbal can be moved, update its pitch based on the current value of the throttle.
+        # Note that the throttle value is in [0,1], so we rescale it to a value in [-1,1] as a first step.
+        if self.__can_move_gimbal:
+            self.__drone.update_gimbal_pitch(2 * (self.__joystick.get_throttle() - 0.5))
