@@ -14,16 +14,27 @@ class FutabaT6KDroneController(DroneController):
 
     # CONSTRUCTOR
 
-    def __init__(self, drone: Drone, joystick: FutabaT6K):
+    def __init__(self, *, drone: Drone):
         """
         TODO
 
-        :param drone:       TODO
-        :param joystick:    TODO
+        :param drone:   TODO
         """
         self.__can_move_gimbal: bool = False
         self.__drone: Drone = drone
-        self.__joystick: FutabaT6K = joystick
+
+        # Try to determine the joystick index of the Futaba T6K. If no joystick is plugged in, early out.
+        joystick_count: int = pygame.joystick.get_count()
+        joystick_idx: int = 0
+        if joystick_count == 0:
+            exit(0)
+        elif joystick_count != 1:
+            # TODO: Prompt the user for the joystick to use.
+            pass
+
+        # Construct and calibrate the Futaba T6K.
+        self.__joystick: FutabaT6K = FutabaT6K(joystick_idx)
+        self.__joystick.calibrate()
 
     # PUBLIC METHODS
 

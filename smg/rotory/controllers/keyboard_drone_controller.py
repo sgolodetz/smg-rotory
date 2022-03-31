@@ -12,7 +12,7 @@ class KeyboardDroneController(DroneController):
 
     # CONSTRUCTOR
 
-    def __init__(self, drone: Drone):
+    def __init__(self, *, drone: Drone):
         """
         TODO
 
