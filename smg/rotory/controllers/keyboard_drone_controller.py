@@ -22,9 +22,9 @@ class KeyboardDroneController(DroneController):
 
     # PUBLIC METHODS
 
-    def update(self, *, altitude: Optional[float] = None, events: Optional[List[pygame.event.Event]] = None,
-               image: np.ndarray, image_timestamp: Optional[float] = None,
-               intrinsics: Tuple[float, float, float, float], tracker_c_t_i: Optional[np.ndarray] = None) -> None:
+    def iterate(self, *, altitude: Optional[float] = None, events: Optional[List[pygame.event.Event]] = None,
+                image: np.ndarray, image_timestamp: Optional[float] = None,
+                intrinsics: Tuple[float, float, float, float], tracker_c_t_i: Optional[np.ndarray] = None) -> None:
         """
         Run an iteration of the controller.
 
@@ -43,33 +43,47 @@ class KeyboardDroneController(DroneController):
             events = []
 
         # TODO
-        for event in events:
-            if event.type == pygame.KEYDOWN:
-                # If the user presses the 'u' key, take off.
-                if event.key == pygame.K_u:
-                    self.__drone.takeoff()
-
-                # If the user presses the 'o' key, land.
-                elif event.key == pygame.K_o:
-                    self.__drone.land()
+        pressed_keys: Sequence[bool] = pygame.key.get_pressed()
 
         # TODO
-        pressed_keys: Sequence[bool] = pygame.key.get_pressed()
+        for event in events:
+            if event.type == pygame.KEYDOWN:
+                # If the user presses the 'u' and 'left shift' keys, take off.
+                if event.key == pygame.K_u and pressed_keys[pygame.K_LSHIFT]:
+                    self.__drone.takeoff()
+
+                # If the user presses the 'o' and 'left shift' keys, land.
+                elif event.key == pygame.K_o and pressed_keys[pygame.K_LSHIFT]:
+                    self.__drone.land()
 
         # TODO
         if pressed_keys[pygame.K_i]:
             self.__drone.move_forward(0.5)
-        elif pressed_keys[pygame.K_COMMA]:
+        elif pressed_keys[pygame.K_k]:
             self.__drone.move_forward(-0.5)
         else:
             self.__drone.move_forward(0.0)
 
         # TODO
-        if pressed_keys[pygame.K_j]:
+        if pressed_keys[pygame.K_j] and pressed_keys[pygame.K_LSHIFT]:
             self.__drone.turn(-1.0)
-        elif pressed_keys[pygame.K_l]:
+        elif pressed_keys[pygame.K_l] and pressed_keys[pygame.K_LSHIFT]:
             self.__drone.turn(1.0)
         else:
             self.__drone.turn(0.0)
 
         # TODO
+        if pressed_keys[pygame.K_j] and not pressed_keys[pygame.K_LSHIFT]:
+            self.__drone.move_right(-0.5)
+        elif pressed_keys[pygame.K_l] and not pressed_keys[pygame.K_LSHIFT]:
+            self.__drone.move_right(0.5)
+        else:
+            self.__drone.move_right(0.0)
+
+        # TODO
+        if pressed_keys[pygame.K_u] and not pressed_keys[pygame.K_LSHIFT]:
+            self.__drone.move_up(0.5)
+        elif pressed_keys[pygame.K_o] and not pressed_keys[pygame.K_LSHIFT]:
+            self.__drone.move_up(-0.5)
+        else:
+            self.__drone.move_up(0.0)

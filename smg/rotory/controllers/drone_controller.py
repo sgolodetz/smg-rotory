@@ -11,9 +11,9 @@ class DroneController(ABC):
     # PUBLIC ABSTRACT METHODS
 
     @abstractmethod
-    def update(self, *, altitude: Optional[float] = None, events: Optional[List[pygame.event.Event]] = None,
-               image: np.ndarray, image_timestamp: Optional[float] = None,
-               intrinsics: Tuple[float, float, float, float], tracker_c_t_i: Optional[np.ndarray] = None) -> None:
+    def iterate(self, *, altitude: Optional[float] = None, events: Optional[List[pygame.event.Event]] = None,
+                image: np.ndarray, image_timestamp: Optional[float] = None,
+                intrinsics: Tuple[float, float, float, float], tracker_c_t_i: Optional[np.ndarray] = None) -> None:
         """
         Run an iteration of the controller.
 

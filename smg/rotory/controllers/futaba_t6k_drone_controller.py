@@ -47,9 +47,9 @@ class FutabaT6KDroneController(DroneController):
         # Ask the program to quit if both Button 0 and Button 1 on the Futaba T6K are set to their "released" state.
         return self.__joystick.get_button(0) == 0 and self.__joystick.get_button(1) == 0
 
-    def update(self, *, altitude: Optional[float] = None, events: Optional[List[pygame.event.Event]] = None,
-               image: np.ndarray, image_timestamp: Optional[float] = None,
-               intrinsics: Tuple[float, float, float, float], tracker_c_t_i: Optional[np.ndarray] = None) -> None:
+    def iterate(self, *, altitude: Optional[float] = None, events: Optional[List[pygame.event.Event]] = None,
+                image: np.ndarray, image_timestamp: Optional[float] = None,
+                intrinsics: Tuple[float, float, float, float], tracker_c_t_i: Optional[np.ndarray] = None) -> None:
         """
         Run an iteration of the controller.
 
