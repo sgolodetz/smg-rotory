@@ -19,7 +19,7 @@ class DroneController(ABC):
 
         :param altitude:            The most recent altitude (in m) for the drone, as measured by any height sensor
                                     it is carrying (optional).
-        :param events:              An optional list of PyGame events that have happened since the last update.
+        :param events:              An optional list of PyGame events that have happened since the last iteration.
         :param image:               The most recent image from the drone.
         :param image_timestamp:     The timestamp of the most recent image from the drone (optional).
         :param intrinsics:          The intrinsics of the drone's camera.
