@@ -20,7 +20,6 @@ setup(
         "numpy",
         "opencv-contrib-python==3.4.2.16",
         "smg-imagesources",
-        "smg-joysticks",
         "smg-rigging"
     ],
     classifiers=[
