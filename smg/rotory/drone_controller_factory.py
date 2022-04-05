@@ -1,7 +1,6 @@
 from .controllers.drone_controller import DroneController
 from .controllers.futaba_t6k_drone_controller import FutabaT6KDroneController
 from .controllers.keyboard_drone_controller import KeyboardDroneController
-from .drones import Drone
 
 
 class DroneControllerFactory:
@@ -12,11 +11,11 @@ class DroneControllerFactory:
     @staticmethod
     def make_drone_controller(controller_type: str, **kwargs) -> DroneController:
         """
-        TODO
+        Make a drone controller of the specified type.
 
-        :param controller_type: TODO
-        :param kwargs:          TODO
-        :return:                TODO
+        :param controller_type: The type of drone controller to make.
+        :param kwargs:          Any keyword arguments to pass to the drone controller constructor.
+        :return:                The drone controller.
         """
         if controller_type == "futabat6k":
             return FutabaT6KDroneController(**kwargs)
