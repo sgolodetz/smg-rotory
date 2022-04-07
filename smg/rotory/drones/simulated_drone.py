@@ -196,7 +196,7 @@ class SimulatedDrone(Drone):
         :param rate:     The rate at which the drone should move forward (in [-1,1]).
         """
         with self.__input_lock:
-            self.__rc_forward = rate
+            self.__rc_forward = np.clip(rate, -1.0, 1.0)
 
     def move_right(self, rate: float) -> None:
         """
@@ -208,7 +208,7 @@ class SimulatedDrone(Drone):
         :param rate:    The rate at which the drone should move to the right (in [-1,1]).
         """
         with self.__input_lock:
-            self.__rc_right = rate
+            self.__rc_right = np.clip(rate, -1.0, 1.0)
 
     def move_up(self, rate: float) -> None:
         """
@@ -220,7 +220,7 @@ class SimulatedDrone(Drone):
         :param rate:    The rate at which the drone should move up (in [-1,1]).
         """
         with self.__input_lock:
-            self.__rc_up = rate
+            self.__rc_up = np.clip(rate, -1.0, 1.0)
 
     def set_drone_origin(self, drone_origin: Camera) -> None:
         """
@@ -266,7 +266,7 @@ class SimulatedDrone(Drone):
         :param rate:    The rate at which the drone should turn (in [-1,1]).
         """
         with self.__input_lock:
-            self.__rc_yaw = rate
+            self.__rc_yaw = np.clip(rate, -1.0, 1.0)
 
     def update_gimbal_pitch(self, gimbal_input: float) -> None:
         """
