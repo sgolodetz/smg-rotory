@@ -16,12 +16,6 @@ from .drone import Drone
 class SimulatedDrone(Drone):
     """An interface that can be used to control a simulated drone."""
 
-    # TYPE ALIASES
-
-    # A function that takes the drone's camera and chassis poses (in that order), an image size and some intrinsics,
-    # and renders an image.
-    ImageRenderer = Callable[[np.ndarray, np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
-
     # NESTED TYPES
 
     class EState(int):
@@ -39,6 +33,17 @@ class SimulatedDrone(Drone):
 
     # The drone is in the process of performing an automated landing.
     LANDING: EState = EState(3)
+
+    # TYPE ALIASES
+
+    # A function that takes the drone's camera and chassis poses (in that order), an image size and some intrinsics,
+    # and renders an image.
+    ImageRenderer = Callable[[np.ndarray, np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
+
+    # A function that can be called iteratively to try to make the drone land. It returns the drone state after
+    # each call. If the drone is still flying, the landing has failed. If the drone's landing, we need to continue
+    # calling the function iteratively. If the drone has landed, we can stop.
+    LandingController = Callable[[SimpleCamera], EState]
 
     # CONSTRUCTOR
 
@@ -67,6 +72,7 @@ class SimulatedDrone(Drone):
             if image_renderer is not None else SimulatedDrone.blank_image_renderer
         self.__image_size: Tuple[int, int] = image_size
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
+        self.__landing_controller: Optional[SimulatedDrone.LandingController] = self.__default_landing_controller
         self.__linear_gain: float = linear_gain
         self.__should_terminate: threading.Event = threading.Event()
 
@@ -238,6 +244,14 @@ class SimulatedDrone(Drone):
             # Record that it has changed, so that the drone can be moved to the new origin whenever it is next idle.
             self.__drone_origin_changed.set()
 
+    def set_landing_controller(self, landing_controller: Optional[LandingController]):
+        """
+        TODO
+
+        :param landing_controller:  TODO
+        """
+        self.__landing_controller = landing_controller
+
     def stop(self) -> None:
         """Tell the drone to stop in mid-air."""
         with self.__input_lock:
@@ -294,6 +308,25 @@ class SimulatedDrone(Drone):
 
     # PRIVATE METHODS
 
+    def __default_landing_controller(self, master_cam: SimpleCamera) -> EState:
+        """
+        TODO
+
+        :param master_cam:  TODO
+        :return:            TODO
+        """
+        with self.__input_lock:
+            drone_origin: SimpleCamera = CameraUtil.make_default_camera()
+            drone_origin.set_from(self.__drone_origin)
+
+        # Move the drone downwards at a constant rate until it's on the ground, then switch to the idle state.
+        # (Note that y points downwards in our coordinate system!)
+        if master_cam.p()[1] - drone_origin.p()[1] < 0.0:
+            master_cam.move_v(-self.__linear_gain * 0.5)
+            return SimulatedDrone.LANDING
+        else:
+            return SimulatedDrone.IDLE
+
     def __get_poses(self) -> Tuple[np.ndarray, np.ndarray]:
         """
         Get the poses of the drone's camera and chassis.
@@ -346,12 +379,12 @@ class SimulatedDrone(Drone):
                 # If the drone's flying, process any vertical movements that are requested.
                 master_cam.move_v(self.__linear_gain * rc_up)
             elif state == SimulatedDrone.LANDING:
-                # If the drone's landing, move it downwards at a constant rate until it's on the ground,
-                # then switch to the idle state. (Note that y points downwards in our coordinate system!)
-                if master_cam.p()[1] - drone_origin.p()[1] < 0.0:
-                    master_cam.move_v(-self.__linear_gain * 0.5)
+                # If the drone's landing, then if a landing controller is active, run it; conversely, if no
+                # landing controller is active, cancel the landing.
+                if self.__landing_controller is not None:
+                    state = self.__landing_controller(master_cam)
                 else:
-                    state = SimulatedDrone.IDLE
+                    state = SimulatedDrone.FLYING
 
             # Update the global version of the state to actually effect the state change.
             with self.__input_lock:
