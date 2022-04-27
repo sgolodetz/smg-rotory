@@ -288,13 +288,21 @@ class SimulatedDrone(Drone):
             # Record that it has changed, so that the drone can be moved to the new origin whenever it is next idle.
             self.__drone_origin_changed.set()
 
-    def set_landing_controller(self, landing_controller: Optional[LandingController]):
+    def set_landing_controller(self, landing_controller: Optional[LandingController]) -> None:
         """
         TODO
 
         :param landing_controller:  TODO
         """
         self.__landing_controller = landing_controller
+
+    def set_takeoff_controller(self, takeoff_controller: Optional[TakeoffController]) -> None:
+        """
+        TODO
+
+        :param takeoff_controller:  TODO
+        """
+        self.__takeoff_controller = takeoff_controller
 
     def stop(self) -> None:
         """Tell the drone to stop in mid-air."""
