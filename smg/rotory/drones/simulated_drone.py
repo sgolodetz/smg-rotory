@@ -113,6 +113,17 @@ class SimulatedDrone(Drone):
         """Destroy the drone object at the end of the with statement that's used to manage its lifetime."""
         self.terminate()
 
+    # PROPERTIES
+
+    @property
+    def linear_gain(self) -> float:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        return self.__linear_gain
+
     # PUBLIC STATIC METHODS
 
     @staticmethod
