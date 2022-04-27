@@ -245,7 +245,8 @@ class SimulatedDrone(Drone):
     def land(self) -> None:
         """Tell the drone to land."""
         with self.__input_lock:
-            self.__state = SimulatedDrone.LANDING
+            if self.__state == SimulatedDrone.FLYING:
+                self.__state = SimulatedDrone.LANDING
 
     def move_forward(self, rate: float) -> None:
         """
@@ -326,7 +327,8 @@ class SimulatedDrone(Drone):
     def takeoff(self) -> None:
         """Tell the drone to take off."""
         with self.__input_lock:
-            self.__state = SimulatedDrone.TAKING_OFF
+            if self.__state == SimulatedDrone.IDLE:
+                self.__state = SimulatedDrone.TAKING_OFF
 
     def terminate(self) -> None:
         """Tell the drone to terminate."""
