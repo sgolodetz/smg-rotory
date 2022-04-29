@@ -124,3 +124,14 @@ class Drone(ABC):
         :return:    A pair consisting of the most recent image received from the drone and its (optional) timestamp.
         """
         return self.get_image(), None
+
+    def update_gimbal_pitch(self, gimbal_pitch: float) -> None:
+        """
+        Update the pitch of the drone's gimbal (if it has one that can be pitched so as to look up/down).
+
+        .. note::
+            If the drone doesn't have a suitable gimbal, this will be a no-op.
+
+        :param gimbal_pitch:   The desired new pitch for the drone's gimbal (in [-1,1], where -1 = down and 1 = up).
+        """
+        pass
