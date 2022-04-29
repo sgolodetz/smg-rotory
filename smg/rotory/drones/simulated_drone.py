@@ -61,7 +61,7 @@ class SimulatedDrone(Drone):
         .. note::
             If drone_origin is set to None, the initial origin for the drone will be the world-space origin.
 
-        :param angular_gain:    The amount by which to multiply the control inputs for angular movements of the drone.
+        :param angular_gain:    The amount by which to multiply the control inputs for angular drone movements.
         :param drone_origin:    The initial origin for the drone (optional).
         :param image_renderer:  An optional function that can be used to render a synthetic image of what the drone
                                 can see from the current pose of its camera.
@@ -69,7 +69,7 @@ class SimulatedDrone(Drone):
                                 (width, height) tuple.
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
                                 as an (fx, fy, cx, cy) tuple.
-        :param linear_gain:     The amount by which to multiply the control inputs for linear movements of the drone.
+        :param linear_gain:     The amount by which to multiply the control inputs for linear drone movements.
         """
         self.__angular_gain: float = angular_gain
         self.__gimbal_input_history: Deque[float] = deque()
@@ -118,9 +118,9 @@ class SimulatedDrone(Drone):
     @property
     def linear_gain(self) -> float:
         """
-        Get the amount by which control inputs will be multiplied for linear movements of the drone.
+        Get the amount by which control inputs will be multiplied for linear drone movements.
 
-        :return:    The amount by which control inputs will be multiplied for linear movements of the drone.
+        :return:    The amount by which control inputs will be multiplied for linear drone movements.
         """
         return self.__linear_gain
 
@@ -146,12 +146,12 @@ class SimulatedDrone(Drone):
 
     # PUBLIC METHODS
 
-    def default_landing_controller(self, master_cam: SimpleCamera) -> EState:
+    def default_landing_controller(self, drone_cur: SimpleCamera) -> EState:
         """
-        TODO
+        Run an iteration of the default landing controller.
 
-        :param master_cam:  TODO
-        :return:            TODO
+        :param drone_cur:   A camera corresponding to the drone's current pose.
+        :return:            The state of the drone after this iteration of the controller.
         """
         with self.__input_lock:
             drone_origin: SimpleCamera = CameraUtil.make_default_camera()
@@ -159,18 +159,18 @@ class SimulatedDrone(Drone):
 
         # Move the drone downwards at a constant rate until it's on the ground, then switch to the idle state.
         # (Note that y points downwards in our coordinate system!)
-        if master_cam.p()[1] - drone_origin.p()[1] < 0.0:
-            master_cam.move_v(-self.__linear_gain * 0.5)
+        if drone_cur.p()[1] - drone_origin.p()[1] < 0.0:
+            drone_cur.move_v(-self.__linear_gain * 0.5)
             return SimulatedDrone.LANDING
         else:
             return SimulatedDrone.IDLE
 
-    def default_takeoff_controller(self, master_cam: SimpleCamera) -> EState:
+    def default_takeoff_controller(self, drone_cur: SimpleCamera) -> EState:
         """
-        TODO
+        Run an iteration of the default takeoff controller.
 
-        :param master_cam:  TODO
-        :return:            TODO
+        :param drone_cur:   A camera corresponding to the drone's current pose.
+        :return:            The state of the drone after this iteration of the controller.
         """
         with self.__input_lock:
             drone_origin: SimpleCamera = CameraUtil.make_default_camera()
@@ -178,8 +178,8 @@ class SimulatedDrone(Drone):
 
         # Move the drone upwards at a constant rate until it's 1m off the ground, then switch to the flying state.
         # (Note that y points downwards in our coordinate system!)
-        if master_cam.p()[1] - drone_origin.p()[1] > -1.0:
-            master_cam.move_v(self.__linear_gain * 0.5)
+        if drone_cur.p()[1] - drone_origin.p()[1] > -1.0:
+            drone_cur.move_v(self.__linear_gain * 0.5)
             return SimulatedDrone.TAKING_OFF
         else:
             return SimulatedDrone.FLYING
