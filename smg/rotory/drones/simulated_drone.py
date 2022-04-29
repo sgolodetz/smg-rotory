@@ -302,17 +302,17 @@ class SimulatedDrone(Drone):
 
     def set_landing_controller(self, landing_controller: Optional[LandingController]) -> None:
         """
-        TODO
+        Set the landing controller to use for the drone.
 
-        :param landing_controller:  TODO
+        :param landing_controller:  The landing controller to use for the drone.
         """
         self.__landing_controller = landing_controller
 
     def set_takeoff_controller(self, takeoff_controller: Optional[TakeoffController]) -> None:
         """
-        TODO
+        Set the takeoff controller to use for the drone.
 
-        :param takeoff_controller:  TODO
+        :param takeoff_controller:  The takeoff controller to use for the drone.
         """
         self.__takeoff_controller = takeoff_controller
 
