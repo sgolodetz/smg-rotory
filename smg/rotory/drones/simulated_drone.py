@@ -153,13 +153,14 @@ class SimulatedDrone(Drone):
         :param drone_cur:   A camera corresponding to the drone's current pose.
         :return:            The state of the drone after this iteration of the controller.
         """
+        # Make a local copy of the drone's origin.
         with self.__input_lock:
             drone_origin: SimpleCamera = CameraUtil.make_default_camera()
             drone_origin.set_from(self.__drone_origin)
 
-        # Move the drone downwards at a constant rate until it's on the ground, then switch to the idle state.
-        # (Note that y points downwards in our coordinate system!)
-        if drone_cur.p()[1] - drone_origin.p()[1] < 0.0:
+        # Move the drone downwards at a constant rate until it's no higher than the drone's origin,
+        # then switch to the idle state. (Note that y points downwards in our coordinate system!)
+        if drone_cur.p()[1] < drone_origin.p()[1]:
             drone_cur.move_v(-self.__linear_gain * 0.5)
             return SimulatedDrone.LANDING
         else:
@@ -172,13 +173,14 @@ class SimulatedDrone(Drone):
         :param drone_cur:   A camera corresponding to the drone's current pose.
         :return:            The state of the drone after this iteration of the controller.
         """
+        # Make a local copy of the drone's origin.
         with self.__input_lock:
             drone_origin: SimpleCamera = CameraUtil.make_default_camera()
             drone_origin.set_from(self.__drone_origin)
 
-        # Move the drone upwards at a constant rate until it's 1m off the ground, then switch to the flying state.
-        # (Note that y points downwards in our coordinate system!)
-        if drone_cur.p()[1] - drone_origin.p()[1] > -1.0:
+        # Move the drone upwards at a constant rate until it's at least 1m above the drone's origin,
+        # then switch to the flying state. (Note that y points downwards in our coordinate system!)
+        if drone_cur.p()[1] > drone_origin.p()[1] - 1.0:
             drone_cur.move_v(self.__linear_gain * 0.5)
             return SimulatedDrone.TAKING_OFF
         else:
