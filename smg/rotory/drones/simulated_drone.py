@@ -43,8 +43,8 @@ class SimulatedDrone(Drone):
     # CONSTRUCTOR
 
     def __init__(self, *, angular_gain: float = 0.02, drone_origin: Optional[SimpleCamera] = None,
-                 image_renderer: ImageRenderer, image_size: Tuple[int, int],
-                 intrinsics: Tuple[float, float, float, float], linear_gain: float = 0.02):
+                 image_renderer: Optional[ImageRenderer] = None, image_size: Tuple[int, int] = (640, 480),
+                 intrinsics: Tuple[float, float, float, float] = (500, 500, 320, 240), linear_gain: float = 0.02):
         """
         Construct a simulated drone.
 
@@ -53,8 +53,8 @@ class SimulatedDrone(Drone):
 
         :param angular_gain:    The amount by which to multiply the control inputs for angular movements of the drone.
         :param drone_origin:    The initial origin for the drone (optional).
-        :param image_renderer:  A function that can be used to render a synthetic image of what the drone can see
-                                from the current pose of its camera.
+        :param image_renderer:  An optional function that can be used to render a synthetic image of what the drone
+                                can see from the current pose of its camera.
         :param image_size:      The size of the synthetic images that should be rendered for the drone, as a
                                 (width, height) tuple.
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
@@ -63,7 +63,8 @@ class SimulatedDrone(Drone):
         """
         self.__angular_gain: float = angular_gain
         self.__gimbal_input_history: Deque[float] = deque()
-        self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer
+        self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer \
+            if image_renderer is not None else SimulatedDrone.blank_image_renderer
         self.__image_size: Tuple[int, int] = image_size
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
         self.__linear_gain: float = linear_gain
@@ -99,6 +100,37 @@ class SimulatedDrone(Drone):
     def __exit__(self, exception_type, exception_value, traceback):
         """Destroy the drone object at the end of the with statement that's used to manage its lifetime."""
         self.terminate()
+
+    # PROPERTIES
+
+    @property
+    def linear_gain(self) -> float:
+        """
+        Get the amount by which control inputs will be multiplied for linear movements of the drone.
+
+        :return:    The amount by which control inputs will be multiplied for linear movements of the drone.
+        """
+        return self.__linear_gain
+
+    # PUBLIC STATIC METHODS
+
+    @staticmethod
+    def blank_image_renderer(camera_w_t_c: np.ndarray, chassis_w_t_c, image_size: Tuple[int, int],
+                             intrinsics: Tuple[float, float, float, float]) -> np.ndarray:
+        """
+        Render a blank image as a dummy version of what the drone can see of the scene from its current pose.
+
+        .. note::
+            This is useful when we want to use a simulated drone but don't need to worry about what it can see.
+
+        :param camera_w_t_c:    The pose of the drone's camera.
+        :param chassis_w_t_c:   The pose of the drone's chassis.
+        :param image_size:      The size of image to render.
+        :param intrinsics:      The camera intrinsics.
+        :return:                The rendered image.
+        """
+        width, height = image_size
+        return np.zeros((height, width, 3), dtype=np.uint8)
 
     # PUBLIC METHODS
 
@@ -163,7 +195,8 @@ class SimulatedDrone(Drone):
     def land(self) -> None:
         """Tell the drone to land."""
         with self.__input_lock:
-            self.__state = SimulatedDrone.LANDING
+            if self.__state == SimulatedDrone.FLYING:
+                self.__state = SimulatedDrone.LANDING
 
     def move_forward(self, rate: float) -> None:
         """
@@ -175,7 +208,7 @@ class SimulatedDrone(Drone):
         :param rate:     The rate at which the drone should move forward (in [-1,1]).
         """
         with self.__input_lock:
-            self.__rc_forward = rate
+            self.__rc_forward = np.clip(rate, -1.0, 1.0)
 
     def move_right(self, rate: float) -> None:
         """
@@ -187,7 +220,7 @@ class SimulatedDrone(Drone):
         :param rate:    The rate at which the drone should move to the right (in [-1,1]).
         """
         with self.__input_lock:
-            self.__rc_right = rate
+            self.__rc_right = np.clip(rate, -1.0, 1.0)
 
     def move_up(self, rate: float) -> None:
         """
@@ -199,7 +232,7 @@ class SimulatedDrone(Drone):
         :param rate:    The rate at which the drone should move up (in [-1,1]).
         """
         with self.__input_lock:
-            self.__rc_up = rate
+            self.__rc_up = np.clip(rate, -1.0, 1.0)
 
     def set_drone_origin(self, drone_origin: Camera) -> None:
         """
@@ -228,7 +261,8 @@ class SimulatedDrone(Drone):
     def takeoff(self) -> None:
         """Tell the drone to take off."""
         with self.__input_lock:
-            self.__state = SimulatedDrone.TAKING_OFF
+            if self.__state == SimulatedDrone.IDLE:
+                self.__state = SimulatedDrone.TAKING_OFF
 
     def terminate(self) -> None:
         """Tell the drone to terminate."""
@@ -245,7 +279,7 @@ class SimulatedDrone(Drone):
         :param rate:    The rate at which the drone should turn (in [-1,1]).
         """
         with self.__input_lock:
-            self.__rc_yaw = rate
+            self.__rc_yaw = np.clip(rate, -1.0, 1.0)
 
     def update_gimbal_pitch(self, gimbal_input: float) -> None:
         """
