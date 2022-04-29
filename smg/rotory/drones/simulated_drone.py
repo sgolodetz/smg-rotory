@@ -118,9 +118,9 @@ class SimulatedDrone(Drone):
     @property
     def linear_gain(self) -> float:
         """
-        TODO
+        Get the amount by which control inputs will be multiplied for linear movements of the drone.
 
-        :return:    TODO
+        :return:    The amount by which control inputs will be multiplied for linear movements of the drone.
         """
         return self.__linear_gain
 
@@ -370,6 +370,8 @@ class SimulatedDrone(Drone):
         gimbal_pitch: float = np.mean(self.__gimbal_input_history) * math.pi / 2
         with self.__input_lock:
             self.__gimbal_pitch = gimbal_pitch
+
+    # PRIVATE METHODS
 
     def __get_poses(self) -> Tuple[np.ndarray, np.ndarray]:
         """
