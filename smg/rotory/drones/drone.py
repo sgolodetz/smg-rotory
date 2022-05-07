@@ -7,6 +7,24 @@ from typing import Optional, Tuple
 class Drone(ABC):
     """The abstract base class for drone interfaces."""
 
+    # NESTED TYPES
+
+    class EState(int):
+        """The states in which a drone can be."""
+        pass
+
+    # The drone is on the ground, with its motors switched off.
+    IDLE: EState = EState(0)
+
+    # The drone is in the process of performing an automated take-off.
+    TAKING_OFF: EState = EState(1)
+
+    # The drone is flying normally.
+    FLYING: EState = EState(2)
+
+    # The drone is in the process of performing an automated landing.
+    LANDING: EState = EState(3)
+
     # PUBLIC ABSTRACT METHODS
 
     @abstractmethod
