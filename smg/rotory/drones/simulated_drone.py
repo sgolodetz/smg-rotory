@@ -217,11 +217,11 @@ class SimulatedDrone(Drone):
         """
         return self.__intrinsics
 
-    def get_state(self) -> Drone.EState:
+    def get_state(self) -> Optional[Drone.EState]:
         """
-        Get the current state of the drone.
+        Try to get the current state of the drone.
 
-        :return:    The current state of the drone.
+        :return:    The current state of the drone, if known, or None otherwise.
         """
         with self.__input_lock:
             return self.__state

@@ -135,6 +135,14 @@ class Drone(ABC):
         """
         return None
 
+    def get_state(self) -> Optional[EState]:
+        """
+        Try to get the current state of the drone.
+
+        :return:    The current state of the drone, if known, or None otherwise.
+        """
+        return None
+
     def get_timed_image(self) -> Tuple[np.ndarray, Optional[float]]:
         """
         Get the most recent image received from the drone and its (optional) timestamp.
