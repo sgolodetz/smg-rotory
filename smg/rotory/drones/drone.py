@@ -127,6 +127,15 @@ class Drone(ABC):
 
     # PUBLIC METHODS
 
+    # noinspection PyMethodMayBeStatic
+    def get_expected_takeoff_height(self) -> Optional[float]:
+        """
+        Try to get the height (in m) to which the drone is expected to take off (if known).
+
+        :return:    The height (in m) to which the drone is expected to take off, if known, or None otherwise.
+        """
+        return None
+
     def get_height(self) -> Optional[float]:
         """
         Try to get the drone's height (in m).
