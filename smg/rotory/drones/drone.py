@@ -7,6 +7,24 @@ from typing import Optional, Tuple
 class Drone(ABC):
     """The abstract base class for drone interfaces."""
 
+    # NESTED TYPES
+
+    class EState(int):
+        """The states in which a drone can be."""
+        pass
+
+    # The drone is on the ground, with its motors switched off.
+    IDLE: EState = EState(0)
+
+    # The drone is in the process of performing an automated take-off.
+    TAKING_OFF: EState = EState(1)
+
+    # The drone is flying normally.
+    FLYING: EState = EState(2)
+
+    # The drone is in the process of performing an automated landing.
+    LANDING: EState = EState(3)
+
     # PUBLIC ABSTRACT METHODS
 
     @abstractmethod
@@ -109,11 +127,28 @@ class Drone(ABC):
 
     # PUBLIC METHODS
 
+    # noinspection PyMethodMayBeStatic
+    def get_expected_takeoff_height(self) -> Optional[float]:
+        """
+        Try to get the height (in m) to which the drone is expected to take off (if known).
+
+        :return:    The height (in m) to which the drone is expected to take off, if known, or None otherwise.
+        """
+        return None
+
     def get_height(self) -> Optional[float]:
         """
         Try to get the drone's height (in m).
 
         :return:    The most recently received value of the drone's height (in m), if available, or None otherwise.
+        """
+        return None
+
+    def get_state(self) -> Optional[EState]:
+        """
+        Try to get the current state of the drone.
+
+        :return:    The current state of the drone, if known, or None otherwise.
         """
         return None
 

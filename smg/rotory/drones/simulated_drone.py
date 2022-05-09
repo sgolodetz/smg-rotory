@@ -16,24 +16,6 @@ from .drone import Drone
 class SimulatedDrone(Drone):
     """An interface that can be used to control a simulated drone."""
 
-    # NESTED TYPES
-
-    class EState(int):
-        """The states in which a simulated drone can be."""
-        pass
-
-    # The drone is on the ground, with its motors switched off.
-    IDLE: EState = EState(0)
-
-    # The drone is in the process of performing an automated take-off.
-    TAKING_OFF: EState = EState(1)
-
-    # The drone is flying normally.
-    FLYING: EState = EState(2)
-
-    # The drone is in the process of performing an automated landing.
-    LANDING: EState = EState(3)
-
     # TYPE ALIASES
 
     # A function that takes the drone's camera and chassis poses (in that order), an image size and some intrinsics,
@@ -43,12 +25,12 @@ class SimulatedDrone(Drone):
     # A function that can be called iteratively to try to make the drone land. It returns the drone state after
     # each call. If the drone is still flying, the landing has failed. If the drone's landing, we need to continue
     # calling the function iteratively. If the drone has landed, we can stop.
-    LandingController = Callable[[SimpleCamera], EState]
+    LandingController = Callable[[SimpleCamera], Drone.EState]
 
     # A function that can be called iteratively to try to make the drone take off. It returns the drone state after
     # each call. If the drone is still on the ground, the takeoff has failed. If the drone's taking off, we need to
     # continue calling the function iteratively. If the drone is flying, we can stop.
-    TakeoffController = Callable[[SimpleCamera], EState]
+    TakeoffController = Callable[[SimpleCamera], Drone.EState]
 
     # CONSTRUCTOR
 
@@ -92,7 +74,7 @@ class SimulatedDrone(Drone):
         self.__rc_right: float = 0.0
         self.__rc_up: float = 0.0
         self.__rc_yaw: float = 0.0
-        self.__state: SimulatedDrone.EState = SimulatedDrone.IDLE
+        self.__state: Drone.EState = Drone.IDLE
         self.__input_lock: threading.Lock = threading.Lock()
 
         self.__camera_w_t_c: np.ndarray = CameraPoseConverter.camera_to_pose(self.__drone_origin)
@@ -146,7 +128,7 @@ class SimulatedDrone(Drone):
 
     # PUBLIC METHODS
 
-    def default_landing_controller(self, drone_cur: SimpleCamera) -> EState:
+    def default_landing_controller(self, drone_cur: SimpleCamera) -> Drone.EState:
         """
         Run an iteration of the default landing controller.
 
@@ -162,11 +144,11 @@ class SimulatedDrone(Drone):
         # then switch to the idle state. (Note that y points downwards in our coordinate system!)
         if drone_cur.p()[1] < drone_origin.p()[1]:
             drone_cur.move_v(-self.__linear_gain * 0.5)
-            return SimulatedDrone.LANDING
+            return Drone.LANDING
         else:
-            return SimulatedDrone.IDLE
+            return Drone.IDLE
 
-    def default_takeoff_controller(self, drone_cur: SimpleCamera) -> EState:
+    def default_takeoff_controller(self, drone_cur: SimpleCamera) -> Drone.EState:
         """
         Run an iteration of the default takeoff controller.
 
@@ -182,9 +164,9 @@ class SimulatedDrone(Drone):
         # then switch to the flying state. (Note that y points downwards in our coordinate system!)
         if drone_cur.p()[1] > drone_origin.p()[1] - 1.0:
             drone_cur.move_v(self.__linear_gain * 0.5)
-            return SimulatedDrone.TAKING_OFF
+            return Drone.TAKING_OFF
         else:
-            return SimulatedDrone.FLYING
+            return Drone.FLYING
 
     def get_battery_level(self) -> Optional[int]:
         """
@@ -235,11 +217,11 @@ class SimulatedDrone(Drone):
         """
         return self.__intrinsics
 
-    def get_state(self) -> EState:
+    def get_state(self) -> Optional[Drone.EState]:
         """
-        Get the current state of the drone.
+        Try to get the current state of the drone.
 
-        :return:    The current state of the drone.
+        :return:    The current state of the drone, if known, or None otherwise.
         """
         with self.__input_lock:
             return self.__state
@@ -247,8 +229,8 @@ class SimulatedDrone(Drone):
     def land(self) -> None:
         """Tell the drone to land."""
         with self.__input_lock:
-            if self.__state == SimulatedDrone.FLYING:
-                self.__state = SimulatedDrone.LANDING
+            if self.__state == Drone.FLYING:
+                self.__state = Drone.LANDING
 
     def move_forward(self, rate: float) -> None:
         """
@@ -329,8 +311,8 @@ class SimulatedDrone(Drone):
     def takeoff(self) -> None:
         """Tell the drone to take off."""
         with self.__input_lock:
-            if self.__state == SimulatedDrone.IDLE:
-                self.__state = SimulatedDrone.TAKING_OFF
+            if self.__state == Drone.IDLE:
+                self.__state = Drone.TAKING_OFF
 
     def terminate(self) -> None:
         """Tell the drone to terminate."""
@@ -401,38 +383,38 @@ class SimulatedDrone(Drone):
                 rc_right: float = self.__rc_right
                 rc_up: float = self.__rc_up
                 rc_yaw: float = self.__rc_yaw
-                state: SimulatedDrone.EState = self.__state
+                state: Drone.EState = self.__state
 
             # If the drone's stationary on the ground and its origin has moved:
-            if state == SimulatedDrone.IDLE and self.__drone_origin_changed.is_set():
+            if state == Drone.IDLE and self.__drone_origin_changed.is_set():
                 # Move the drone to its new origin.
                 master_cam.set_from(drone_origin)
                 self.__drone_origin_changed.clear()
 
             # Provided the drone's not stationary on the ground, process any horizontal movements that are requested.
-            if state != SimulatedDrone.IDLE:
+            if state != Drone.IDLE:
                 master_cam.move_n(self.__linear_gain * rc_forward)
                 master_cam.move_u(-self.__linear_gain * rc_right)
                 master_cam.rotate(master_cam.v(), -self.__angular_gain * rc_yaw)
 
             # Depending on the drone's state:
-            if state == SimulatedDrone.TAKING_OFF:
+            if state == Drone.TAKING_OFF:
                 # If the drone's taking off, then if a takeoff controller is active, run it; conversely, if no
                 # takeoff controller is active, cancel the takeoff.
                 if self.__takeoff_controller is not None:
                     state = self.__takeoff_controller(master_cam)
                 else:
-                    state = SimulatedDrone.IDLE
-            elif state == SimulatedDrone.FLYING:
+                    state = Drone.IDLE
+            elif state == Drone.FLYING:
                 # If the drone's flying, process any vertical movements that are requested.
                 master_cam.move_v(self.__linear_gain * rc_up)
-            elif state == SimulatedDrone.LANDING:
+            elif state == Drone.LANDING:
                 # If the drone's landing, then if a landing controller is active, run it; conversely, if no
                 # landing controller is active, cancel the landing.
                 if self.__landing_controller is not None:
                     state = self.__landing_controller(master_cam)
                 else:
-                    state = SimulatedDrone.FLYING
+                    state = Drone.FLYING
 
             # Update the global version of the state to actually effect the state change.
             with self.__input_lock:
@@ -447,7 +429,7 @@ class SimulatedDrone(Drone):
             # state, this is derived by adding some Gaussian noise to the master pose.
             chassis_cam: SimpleCamera = CameraUtil.make_default_camera()
             chassis_cam.set_from(master_cam)
-            if state != SimulatedDrone.IDLE:
+            if state != Drone.IDLE:
                 chassis_cam.rotate(master_cam.n(), np.random.normal(0.0, 0.01))
                 direction: np.ndarray = np.random.normal(0.0, 1.0, 3)
                 length_squared: float = np.dot(direction, direction)
