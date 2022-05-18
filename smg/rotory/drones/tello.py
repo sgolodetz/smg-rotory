@@ -5,6 +5,7 @@ import socket
 import threading
 import time
 
+from timeit import default_timer as timer
 from typing import Dict, Mapping, Optional, Tuple
 
 from .drone import Drone
@@ -55,6 +56,8 @@ class Tello(Drone):
         self.__height_offset: int = height_offset
         self.__image_timestamp: Optional[float] = None
         self.__intrinsics: Optional[Tuple[float, float, float, float]] = intrinsics
+        self.__last_motor_time: Optional[int] = None
+        self.__last_motor_time_changed: Optional[float] = None
         self.__print_commands: bool = print_commands
         self.__print_responses: bool = print_responses
         self.__print_state_messages: bool = print_state_messages
@@ -64,6 +67,7 @@ class Tello(Drone):
         self.__rc_yaw = 0
         self.__response_is_pending: bool = False
         self.__should_terminate: bool = False
+        self.__state: Drone.EState = Drone.IDLE
         self.__state_map: dict = {}
 
         # If the user didn't manually specify any camera parameters, use the defaults if allowed.
@@ -164,6 +168,28 @@ class Tello(Drone):
         """
         return self.__intrinsics
 
+    def get_motor_time(self) -> Optional[int]:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        with self.__state_lock:
+            motor_time: Optional[str] = self.__state_map.get("time")
+            return int(motor_time) if motor_time is not None else None
+
+    def get_state(self) -> Optional[Drone.EState]:
+        """
+        Try to get the current state of the drone.
+
+        :return:    The current state of the drone, if known, or None otherwise.
+        """
+        # TODO: Comment here.
+        motor_time: Optional[int] = self.get_motor_time()
+        with self.__state_lock:
+            print(f"Drone State: {self.__state}; Motor Time: {motor_time}; Last Motor Time: {self.__last_motor_time}; Changed: {self.__last_motor_time_changed}")
+            return self.__state
+
     def get_state_map(self) -> Dict[str, str]:
         """
         Get the most recent state map received from the drone.
@@ -204,6 +230,7 @@ class Tello(Drone):
     def land(self) -> None:
         """Tell the drone to land."""
         self.__send_command("land", expect_response=True)
+        self.__state = Drone.LANDING
 
     def move_forward(self, rate: float) -> None:
         """
@@ -248,6 +275,7 @@ class Tello(Drone):
     def takeoff(self) -> None:
         """Tell the drone to take off."""
         self.__send_command("takeoff", expect_response=True)
+        self.__state = Drone.FLYING
 
     def terminate(self) -> None:
         """Tell the drone to terminate."""
@@ -328,8 +356,8 @@ class Tello(Drone):
         """Process state messages sent by the drone."""
         # While the drone should not terminate:
         while not self.__should_terminate:
-            # Sleep for 100 milliseconds.
-            time.sleep(0.1)
+            # Sleep for 10 milliseconds.
+            time.sleep(0.01)
 
             # Attempt to receive a state message from the drone.
             try:
@@ -354,8 +382,19 @@ class Tello(Drone):
                 chunks: Mapping = [s.split(":") for s in state_message.decode("UTF-8").split(";")[:-1]]
 
                 # Update the internal state map based on the chunks.
+                state_map = dict(chunks)
                 with self.__state_lock:
-                    self.__state_map = dict(chunks)
+                    self.__state_map = state_map
+
+                # TODO: Comment here.
+                motor_time: Optional[int] = self.get_motor_time()
+                if self.__last_motor_time is None or motor_time != self.__last_motor_time:
+                    self.__last_motor_time = motor_time
+                    self.__last_motor_time_changed = timer()
+                else:
+                    with self.__state_lock:
+                        if self.__state == Drone.LANDING and timer() - self.__last_motor_time_changed >= 1.0:
+                            self.__state = Drone.IDLE
 
     # noinspection PyUnresolvedReferences
     def __process_video_messages(self) -> None:
