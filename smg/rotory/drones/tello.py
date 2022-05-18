@@ -170,9 +170,9 @@ class Tello(Drone):
 
     def get_motor_time(self) -> Optional[int]:
         """
-        TODO
+        Try to get the amount of time for which the drone's motors have been used (in s).
 
-        :return:    TODO
+        :return:    The most recently received value of the drone's motor time (in s), if available, or None otherwise.
         """
         with self.__state_lock:
             motor_time: Optional[str] = self.__state_map.get("time")
@@ -184,10 +184,7 @@ class Tello(Drone):
 
         :return:    The current state of the drone, if known, or None otherwise.
         """
-        # TODO: Comment here.
-        motor_time: Optional[int] = self.get_motor_time()
         with self.__state_lock:
-            print(f"Drone State: {self.__state}; Motor Time: {motor_time}; Last Motor Time: {self.__last_motor_time}; Changed: {self.__last_motor_time_changed}")
             return self.__state
 
     def get_state_map(self) -> Dict[str, str]:
