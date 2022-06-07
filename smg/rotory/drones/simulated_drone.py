@@ -77,7 +77,7 @@ class SimulatedDrone(Drone):
         self.__state: Drone.EState = Drone.IDLE
         self.__input_lock: threading.Lock = threading.Lock()
 
-        self.__camera_w_t_c: np.ndarray = CameraPoseConverter.camera_to_pose(self.__drone_origin)
+        self.__camera_w_t_c: np.ndarray = np.linalg.inv(CameraPoseConverter.camera_to_pose(self.__drone_origin))
         self.__chassis_w_t_c: np.ndarray = self.__camera_w_t_c.copy()
         self.__output_lock: threading.Lock = threading.Lock()
 
