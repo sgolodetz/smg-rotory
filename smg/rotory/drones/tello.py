@@ -227,7 +227,8 @@ class Tello(Drone):
     def land(self) -> None:
         """Tell the drone to land."""
         self.__send_command("land", expect_response=True)
-        self.__state = Drone.LANDING
+        with self.__state_lock:
+            self.__state = Drone.LANDING
 
     def move_forward(self, rate: float) -> None:
         """
@@ -272,7 +273,8 @@ class Tello(Drone):
     def takeoff(self) -> None:
         """Tell the drone to take off."""
         self.__send_command("takeoff", expect_response=True)
-        self.__state = Drone.FLYING
+        with self.__state_lock:
+            self.__state = Drone.FLYING
 
     def terminate(self) -> None:
         """Tell the drone to terminate."""
@@ -300,6 +302,25 @@ class Tello(Drone):
         self.__rc_yaw = Tello.__rate_to_control_value(rate)
 
     # PRIVATE METHODS
+
+    def __check_if_landed(self) -> None:
+        """Check whether the drone has just completed a landing, and update its state as needed."""
+        # Get the amount of time for which the drone's motors have been used.
+        motor_time: Optional[int] = self.get_motor_time()
+
+        # If the motors have been used since we last got here (or this is the first time we got here):
+        if self.__last_motor_time is None or motor_time != self.__last_motor_time:
+            # Update our record of the last motor time and when it was last updated accordingly.
+            self.__last_motor_time = motor_time
+            self.__last_motor_time_changed = timer()
+
+        # Otherwise:
+        else:
+            with self.__state_lock:
+                # If the drone was previously landing, and the motors have now been idle for at least 1s:
+                if self.__state == Drone.LANDING and timer() - self.__last_motor_time_changed >= 1.0:
+                    # The drone has successfully landed, so set its state to idle.
+                    self.__state = Drone.IDLE
 
     def __process_command_responses(self) -> None:
         """Process command responses sent by the drone."""
@@ -383,15 +404,8 @@ class Tello(Drone):
                 with self.__state_lock:
                     self.__state_map = state_map
 
-                # TODO: Comment here.
-                motor_time: Optional[int] = self.get_motor_time()
-                if self.__last_motor_time is None or motor_time != self.__last_motor_time:
-                    self.__last_motor_time = motor_time
-                    self.__last_motor_time_changed = timer()
-                else:
-                    with self.__state_lock:
-                        if self.__state == Drone.LANDING and timer() - self.__last_motor_time_changed >= 1.0:
-                            self.__state = Drone.IDLE
+                # Check whether the drone has just completed a landing, and update its state as needed.
+                self.__check_if_landed()
 
     # noinspection PyUnresolvedReferences
     def __process_video_messages(self) -> None:
