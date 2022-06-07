@@ -128,6 +128,24 @@ class Drone(ABC):
     # PUBLIC METHODS
 
     # noinspection PyMethodMayBeStatic
+    def calculate_turn_rate(self, *, rad_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param rad_per_s:       TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        # TODO
+        rate: float = rad_per_s / (np.pi / 2)
+        if np.fabs(rate) <= 1.0:
+            return rate
+        elif allow_clipping:
+            return np.clip(rate, -1.0, 1.0)
+        else:
+            return None
+
+    # noinspection PyMethodMayBeStatic
     def get_expected_takeoff_height(self) -> Optional[float]:
         """
         Try to get the height (in m) to which the drone is expected to take off (if known).

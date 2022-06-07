@@ -5,6 +5,7 @@ import time
 import vg
 
 from collections import deque
+from timeit import default_timer as timer
 from typing import Callable, Deque, Optional, Tuple
 
 from smg.rigging.cameras import Camera, SimpleCamera
@@ -34,7 +35,7 @@ class SimulatedDrone(Drone):
 
     # CONSTRUCTOR
 
-    def __init__(self, *, angular_gain: float = 0.02, drone_origin: Optional[SimpleCamera] = None,
+    def __init__(self, *, drone_origin: Optional[SimpleCamera] = None,
                  image_renderer: Optional[ImageRenderer] = None, image_size: Tuple[int, int] = (640, 480),
                  intrinsics: Tuple[float, float, float, float] = (500, 500, 320, 240), linear_gain: float = 0.02):
         """
@@ -43,7 +44,6 @@ class SimulatedDrone(Drone):
         .. note::
             If drone_origin is set to None, the initial origin for the drone will be the world-space origin.
 
-        :param angular_gain:    The amount by which to multiply the control inputs for angular drone movements.
         :param drone_origin:    The initial origin for the drone (optional).
         :param image_renderer:  An optional function that can be used to render a synthetic image of what the drone
                                 can see from the current pose of its camera.
@@ -53,7 +53,6 @@ class SimulatedDrone(Drone):
                                 as an (fx, fy, cx, cy) tuple.
         :param linear_gain:     The amount by which to multiply the control inputs for linear drone movements.
         """
-        self.__angular_gain: float = angular_gain
         self.__gimbal_input_history: Deque[float] = deque()
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer \
             if image_renderer is not None else SimulatedDrone.blank_image_renderer
@@ -371,6 +370,7 @@ class SimulatedDrone(Drone):
         # Construct the camera corresponding to the master pose for the drone (the poses of its camera and chassis
         # will be derived from this each frame).
         master_cam: SimpleCamera = CameraUtil.make_default_camera()
+        previous_time: Optional[float] = None
 
         # Until the simulation should terminate:
         while not self.__should_terminate.is_set():
@@ -385,6 +385,11 @@ class SimulatedDrone(Drone):
                 rc_yaw: float = self.__rc_yaw
                 state: Drone.EState = self.__state
 
+            # TODO: Comment here.
+            current_time: float = timer()
+            time_offset: Optional[float] = current_time - previous_time if previous_time is not None else None
+            previous_time = current_time
+
             # If the drone's stationary on the ground and its origin has moved:
             if state == Drone.IDLE and self.__drone_origin_changed.is_set():
                 # Move the drone to its new origin.
@@ -392,10 +397,10 @@ class SimulatedDrone(Drone):
                 self.__drone_origin_changed.clear()
 
             # Provided the drone's not stationary on the ground, process any horizontal movements that are requested.
-            if state != Drone.IDLE:
+            if state != Drone.IDLE and time_offset is not None:
                 master_cam.move_n(self.__linear_gain * rc_forward)
                 master_cam.move_u(-self.__linear_gain * rc_right)
-                master_cam.rotate(master_cam.v(), -self.__angular_gain * rc_yaw)
+                master_cam.rotate(master_cam.v(), -time_offset * rc_yaw * np.pi / 2)
 
             # Depending on the drone's state:
             if state == Drone.TAKING_OFF:
@@ -405,7 +410,7 @@ class SimulatedDrone(Drone):
                     state = self.__takeoff_controller(master_cam)
                 else:
                     state = Drone.IDLE
-            elif state == Drone.FLYING:
+            elif state == Drone.FLYING and time_offset is not None:
                 # If the drone's flying, process any vertical movements that are requested.
                 master_cam.move_v(self.__linear_gain * rc_up)
             elif state == Drone.LANDING:
