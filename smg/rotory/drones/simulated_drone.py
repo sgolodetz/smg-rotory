@@ -26,18 +26,18 @@ class SimulatedDrone(Drone):
     # A function that can be called iteratively to try to make the drone land. It returns the drone state after
     # each call. If the drone is still flying, the landing has failed. If the drone's landing, we need to continue
     # calling the function iteratively. If the drone has landed, we can stop.
-    LandingController = Callable[[SimpleCamera], Drone.EState]
+    LandingController = Callable[[SimpleCamera, float], Drone.EState]
 
     # A function that can be called iteratively to try to make the drone take off. It returns the drone state after
     # each call. If the drone is still on the ground, the takeoff has failed. If the drone's taking off, we need to
     # continue calling the function iteratively. If the drone is flying, we can stop.
-    TakeoffController = Callable[[SimpleCamera], Drone.EState]
+    TakeoffController = Callable[[SimpleCamera, float], Drone.EState]
 
     # CONSTRUCTOR
 
     def __init__(self, *, drone_origin: Optional[SimpleCamera] = None,
                  image_renderer: Optional[ImageRenderer] = None, image_size: Tuple[int, int] = (640, 480),
-                 intrinsics: Tuple[float, float, float, float] = (500, 500, 320, 240), linear_gain: float = 0.02):
+                 intrinsics: Tuple[float, float, float, float] = (500, 500, 320, 240)):
         """
         Construct a simulated drone.
 
@@ -51,7 +51,6 @@ class SimulatedDrone(Drone):
                                 (width, height) tuple.
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
                                 as an (fx, fy, cx, cy) tuple.
-        :param linear_gain:     The amount by which to multiply the control inputs for linear drone movements.
         """
         self.__gimbal_input_history: Deque[float] = deque()
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer \
@@ -59,7 +58,6 @@ class SimulatedDrone(Drone):
         self.__image_size: Tuple[int, int] = image_size
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
         self.__landing_controller: Optional[SimulatedDrone.LandingController] = self.default_landing_controller
-        self.__linear_gain: float = linear_gain
         self.__should_terminate: threading.Event = threading.Event()
         self.__takeoff_controller: Optional[SimulatedDrone.TakeoffController] = self.default_takeoff_controller
 
@@ -93,17 +91,6 @@ class SimulatedDrone(Drone):
     def __exit__(self, exception_type, exception_value, traceback):
         """Destroy the drone object at the end of the with statement that's used to manage its lifetime."""
         self.terminate()
-
-    # PROPERTIES
-
-    @property
-    def linear_gain(self) -> float:
-        """
-        Get the amount by which control inputs will be multiplied for linear drone movements.
-
-        :return:    The amount by which control inputs will be multiplied for linear drone movements.
-        """
-        return self.__linear_gain
 
     # PUBLIC STATIC METHODS
 
@@ -171,7 +158,7 @@ class SimulatedDrone(Drone):
         :param rate:    TODO
         :return:        TODO
         """
-        return -rate / 2.0
+        return -rate * 2.0
 
     def calculate_turn_rate(self, *, rad_per_s: float, allow_clipping: bool = True) -> Optional[float]:
         """
@@ -220,11 +207,12 @@ class SimulatedDrone(Drone):
         """
         return rate * 2.0
 
-    def default_landing_controller(self, drone_cur: SimpleCamera) -> Drone.EState:
+    def default_landing_controller(self, drone_cur: SimpleCamera, time_offset: float) -> Drone.EState:
         """
         Run an iteration of the default landing controller.
 
         :param drone_cur:   A camera corresponding to the drone's current pose.
+        :param time_offset: TODO
         :return:            The state of the drone after this iteration of the controller.
         """
         # Make a local copy of the drone's origin.
@@ -235,16 +223,19 @@ class SimulatedDrone(Drone):
         # Move the drone downwards at a constant rate until it's no higher than the drone's origin,
         # then switch to the idle state. (Note that y points downwards in our coordinate system!)
         if drone_cur.p()[1] < drone_origin.p()[1]:
-            drone_cur.move_v(-self.__linear_gain * 0.5)
+            target_velocity: float = -1.0
+            velocity: float = self.calculate_up_velocity(rate=self.calculate_up_rate(m_per_s=target_velocity))
+            drone_cur.move_v(time_offset * velocity)
             return Drone.LANDING
         else:
             return Drone.IDLE
 
-    def default_takeoff_controller(self, drone_cur: SimpleCamera) -> Drone.EState:
+    def default_takeoff_controller(self, drone_cur: SimpleCamera, time_offset: float) -> Drone.EState:
         """
         Run an iteration of the default takeoff controller.
 
         :param drone_cur:   A camera corresponding to the drone's current pose.
+        :param time_offset: TODO
         :return:            The state of the drone after this iteration of the controller.
         """
         # Make a local copy of the drone's origin.
@@ -255,7 +246,9 @@ class SimulatedDrone(Drone):
         # Move the drone upwards at a constant rate until it's at least 1m above the drone's origin,
         # then switch to the flying state. (Note that y points downwards in our coordinate system!)
         if drone_cur.p()[1] > drone_origin.p()[1] - 1.0:
-            drone_cur.move_v(self.__linear_gain * 0.5)
+            target_velocity: float = 1.0
+            velocity: float = self.calculate_up_velocity(rate=self.calculate_up_rate(m_per_s=target_velocity))
+            drone_cur.move_v(time_offset * velocity)
             return Drone.TAKING_OFF
         else:
             return Drone.FLYING
@@ -499,8 +492,8 @@ class SimulatedDrone(Drone):
             if state == Drone.TAKING_OFF:
                 # If the drone's taking off, then if a takeoff controller is active, run it; conversely, if no
                 # takeoff controller is active, cancel the takeoff.
-                if self.__takeoff_controller is not None:
-                    state = self.__takeoff_controller(master_cam)
+                if self.__takeoff_controller is not None and time_offset is not None:
+                    state = self.__takeoff_controller(master_cam, time_offset)
                 else:
                     state = Drone.IDLE
             elif state == Drone.FLYING and time_offset is not None:
@@ -509,8 +502,8 @@ class SimulatedDrone(Drone):
             elif state == Drone.LANDING:
                 # If the drone's landing, then if a landing controller is active, run it; conversely, if no
                 # landing controller is active, cancel the landing.
-                if self.__landing_controller is not None:
-                    state = self.__landing_controller(master_cam)
+                if self.__landing_controller is not None and time_offset is not None:
+                    state = self.__landing_controller(master_cam, time_offset)
                 else:
                     state = Drone.FLYING
 
