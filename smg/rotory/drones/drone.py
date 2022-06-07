@@ -135,7 +135,16 @@ class Drone(ABC):
         :param allow_clipping:  TODO
         :return:                TODO
         """
-        return self._calculate_rate(units_per_s=m_per_s, max_units_per_s=1.0, allow_clipping=allow_clipping)
+        return None
+
+    def calculate_forward_velocity(self, *, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return None
 
     def calculate_right_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
         """
@@ -145,7 +154,16 @@ class Drone(ABC):
         :param allow_clipping:  TODO
         :return:                TODO
         """
-        return self._calculate_rate(units_per_s=m_per_s, max_units_per_s=1.0, allow_clipping=allow_clipping)
+        return None
+
+    def calculate_right_velocity(self, *, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return None
 
     def calculate_turn_rate(self, *, rad_per_s: float, allow_clipping: bool = True) -> Optional[float]:
         """
@@ -155,8 +173,16 @@ class Drone(ABC):
         :param allow_clipping:  TODO
         :return:                TODO
         """
-        # TODO
-        return self._calculate_rate(units_per_s=rad_per_s, max_units_per_s=np.pi / 2, allow_clipping=allow_clipping)
+        return None
+
+    def calculate_turn_velocity(self, *, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return None
 
     def calculate_up_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
         """
@@ -166,7 +192,16 @@ class Drone(ABC):
         :param allow_clipping:  TODO
         :return:                TODO
         """
-        return self._calculate_rate(units_per_s=m_per_s, max_units_per_s=1.0, allow_clipping=allow_clipping)
+        return None
+
+    def calculate_up_velocity(self, *, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return None
 
     # noinspection PyMethodMayBeStatic
     def get_expected_takeoff_height(self) -> Optional[float]:
@@ -211,23 +246,3 @@ class Drone(ABC):
         :param gimbal_pitch:   The desired new pitch for the drone's gimbal (in [-1,1], where -1 = down and 1 = up).
         """
         pass
-
-    # PROTECTED METHODS
-
-    # noinspection PyMethodMayBeStatic
-    def _calculate_rate(self, *, units_per_s: float, max_units_per_s: float, allow_clipping: bool) -> Optional[float]:
-        """
-        TODO
-
-        :param units_per_s:     TODO
-        :param max_units_per_s: TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
-        """
-        rate: float = units_per_s / max_units_per_s
-        if np.fabs(rate) <= 1.0:
-            return rate
-        elif allow_clipping:
-            return np.clip(rate, -1.0, 1.0)
-        else:
-            return None

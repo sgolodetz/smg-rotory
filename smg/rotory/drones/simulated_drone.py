@@ -127,6 +127,99 @@ class SimulatedDrone(Drone):
 
     # PUBLIC METHODS
 
+    def calculate_forward_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param m_per_s:         TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        return SimulatedDrone.__calculate_rate(
+            units_per_s=m_per_s,
+            max_units_per_s=abs(self.calculate_forward_velocity(rate=1.0)),
+            allow_clipping=allow_clipping
+        )
+
+    def calculate_forward_velocity(self, *, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return rate * 2.0
+
+    def calculate_right_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param m_per_s:         TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        return SimulatedDrone.__calculate_rate(
+            units_per_s=m_per_s,
+            max_units_per_s=abs(self.calculate_right_velocity(rate=1.0)),
+            allow_clipping=allow_clipping
+        )
+
+    def calculate_right_velocity(self, *, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return -rate / 2.0
+
+    def calculate_turn_rate(self, *, rad_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param rad_per_s:       TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        # TODO
+        return SimulatedDrone.__calculate_rate(
+            units_per_s=rad_per_s,
+            max_units_per_s=abs(self.calculate_turn_velocity(rate=1.0)),
+            allow_clipping=allow_clipping
+        )
+
+    def calculate_turn_velocity(self, *, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return -rate * np.pi / 2
+
+    def calculate_up_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param m_per_s:         TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        return SimulatedDrone.__calculate_rate(
+            units_per_s=m_per_s,
+            max_units_per_s=abs(self.calculate_up_velocity(rate=1.0)),
+            allow_clipping=allow_clipping
+        )
+
+    def calculate_up_velocity(self, *, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return rate * 2.0
+
     def default_landing_controller(self, drone_cur: SimpleCamera) -> Drone.EState:
         """
         Run an iteration of the default landing controller.
@@ -398,9 +491,9 @@ class SimulatedDrone(Drone):
 
             # Provided the drone's not stationary on the ground, process any horizontal movements that are requested.
             if state != Drone.IDLE and time_offset is not None:
-                master_cam.move_n(time_offset * rc_forward)
-                master_cam.move_u(-time_offset * rc_right)
-                master_cam.rotate(master_cam.v(), -time_offset * rc_yaw * np.pi / 2)
+                master_cam.move_n(time_offset * self.calculate_forward_velocity(rate=rc_forward))
+                master_cam.move_u(time_offset * self.calculate_right_velocity(rate=rc_right))
+                master_cam.rotate(master_cam.v(), time_offset * self.calculate_turn_velocity(rate=rc_yaw))
 
             # Depending on the drone's state:
             if state == Drone.TAKING_OFF:
@@ -412,7 +505,7 @@ class SimulatedDrone(Drone):
                     state = Drone.IDLE
             elif state == Drone.FLYING and time_offset is not None:
                 # If the drone's flying, process any vertical movements that are requested.
-                master_cam.move_v(time_offset * rc_up)
+                master_cam.move_v(time_offset * self.calculate_up_velocity(rate=rc_up))
             elif state == Drone.LANDING:
                 # If the drone's landing, then if a landing controller is active, run it; conversely, if no
                 # landing controller is active, cancel the landing.
@@ -450,3 +543,23 @@ class SimulatedDrone(Drone):
 
             # Wait momentarily to avoid a spin loop before processing the next iteration of the simulation.
             time.sleep(0.01)
+
+    # PRIVATE STATIC METHODS
+
+    @staticmethod
+    def __calculate_rate(*, units_per_s: float, max_units_per_s: float, allow_clipping: bool) -> Optional[float]:
+        """
+        TODO
+
+        :param units_per_s:     TODO
+        :param max_units_per_s: TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        rate: float = units_per_s / max_units_per_s
+        if np.fabs(rate) <= 1.0:
+            return rate
+        elif allow_clipping:
+            return np.clip(rate, -1.0, 1.0)
+        else:
+            return None
