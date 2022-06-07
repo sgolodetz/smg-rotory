@@ -398,8 +398,8 @@ class SimulatedDrone(Drone):
 
             # Provided the drone's not stationary on the ground, process any horizontal movements that are requested.
             if state != Drone.IDLE and time_offset is not None:
-                master_cam.move_n(self.__linear_gain * rc_forward)
-                master_cam.move_u(-self.__linear_gain * rc_right)
+                master_cam.move_n(time_offset * rc_forward)
+                master_cam.move_u(-time_offset * rc_right)
                 master_cam.rotate(master_cam.v(), -time_offset * rc_yaw * np.pi / 2)
 
             # Depending on the drone's state:
@@ -412,7 +412,7 @@ class SimulatedDrone(Drone):
                     state = Drone.IDLE
             elif state == Drone.FLYING and time_offset is not None:
                 # If the drone's flying, process any vertical movements that are requested.
-                master_cam.move_v(self.__linear_gain * rc_up)
+                master_cam.move_v(time_offset * rc_up)
             elif state == Drone.LANDING:
                 # If the drone's landing, then if a landing controller is active, run it; conversely, if no
                 # landing controller is active, cancel the landing.
