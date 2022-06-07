@@ -114,7 +114,7 @@ class SimulatedDrone(Drone):
 
     # PUBLIC METHODS
 
-    def calculate_forward_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+    def calculate_forward_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
         TODO
 
@@ -128,7 +128,7 @@ class SimulatedDrone(Drone):
             allow_clipping=allow_clipping
         )
 
-    def calculate_forward_velocity(self, *, rate: float) -> Optional[float]:
+    def calculate_forward_velocity(self, rate: float) -> Optional[float]:
         """
         TODO
 
@@ -137,7 +137,7 @@ class SimulatedDrone(Drone):
         """
         return rate * 2.0
 
-    def calculate_right_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+    def calculate_right_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
         TODO
 
@@ -151,16 +151,16 @@ class SimulatedDrone(Drone):
             allow_clipping=allow_clipping
         )
 
-    def calculate_right_velocity(self, *, rate: float) -> Optional[float]:
+    def calculate_right_velocity(self, rate: float) -> Optional[float]:
         """
         TODO
 
         :param rate:    TODO
         :return:        TODO
         """
-        return -rate * 2.0
+        return rate * 2.0
 
-    def calculate_turn_rate(self, *, rad_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+    def calculate_turn_rate(self, rad_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
         TODO
 
@@ -175,7 +175,7 @@ class SimulatedDrone(Drone):
             allow_clipping=allow_clipping
         )
 
-    def calculate_turn_velocity(self, *, rate: float) -> Optional[float]:
+    def calculate_turn_velocity(self, rate: float) -> Optional[float]:
         """
         TODO
 
@@ -184,7 +184,7 @@ class SimulatedDrone(Drone):
         """
         return -rate * np.pi / 2
 
-    def calculate_up_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+    def calculate_up_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
         TODO
 
@@ -198,7 +198,7 @@ class SimulatedDrone(Drone):
             allow_clipping=allow_clipping
         )
 
-    def calculate_up_velocity(self, *, rate: float) -> Optional[float]:
+    def calculate_up_velocity(self, rate: float) -> Optional[float]:
         """
         TODO
 
@@ -224,7 +224,7 @@ class SimulatedDrone(Drone):
         # then switch to the idle state. (Note that y points downwards in our coordinate system!)
         if drone_cur.p()[1] < drone_origin.p()[1]:
             target_velocity: float = -1.0
-            velocity: float = self.calculate_up_velocity(rate=self.calculate_up_rate(m_per_s=target_velocity))
+            velocity: float = self.clip_up_velocity(target_velocity)
             drone_cur.move_v(time_offset * velocity)
             return Drone.LANDING
         else:
@@ -247,7 +247,7 @@ class SimulatedDrone(Drone):
         # then switch to the flying state. (Note that y points downwards in our coordinate system!)
         if drone_cur.p()[1] > drone_origin.p()[1] - 1.0:
             target_velocity: float = 1.0
-            velocity: float = self.calculate_up_velocity(rate=self.calculate_up_rate(m_per_s=target_velocity))
+            velocity: float = self.clip_up_velocity(target_velocity)
             drone_cur.move_v(time_offset * velocity)
             return Drone.TAKING_OFF
         else:
@@ -485,7 +485,7 @@ class SimulatedDrone(Drone):
             # Provided the drone's not stationary on the ground, process any horizontal movements that are requested.
             if state != Drone.IDLE and time_offset is not None:
                 master_cam.move_n(time_offset * self.calculate_forward_velocity(rate=rc_forward))
-                master_cam.move_u(time_offset * self.calculate_right_velocity(rate=rc_right))
+                master_cam.move_u(-time_offset * self.calculate_right_velocity(rate=rc_right))
                 master_cam.rotate(master_cam.v(), time_offset * self.calculate_turn_velocity(rate=rc_yaw))
 
             # Depending on the drone's state:

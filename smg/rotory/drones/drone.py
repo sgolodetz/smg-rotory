@@ -127,7 +127,7 @@ class Drone(ABC):
 
     # PUBLIC METHODS
 
-    def calculate_forward_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+    def calculate_forward_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
         TODO
 
@@ -137,7 +137,7 @@ class Drone(ABC):
         """
         return None
 
-    def calculate_forward_velocity(self, *, rate: float) -> Optional[float]:
+    def calculate_forward_velocity(self, rate: float) -> Optional[float]:
         """
         TODO
 
@@ -146,7 +146,7 @@ class Drone(ABC):
         """
         return None
 
-    def calculate_right_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+    def calculate_right_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
         TODO
 
@@ -156,7 +156,7 @@ class Drone(ABC):
         """
         return None
 
-    def calculate_right_velocity(self, *, rate: float) -> Optional[float]:
+    def calculate_right_velocity(self, rate: float) -> Optional[float]:
         """
         TODO
 
@@ -165,7 +165,7 @@ class Drone(ABC):
         """
         return None
 
-    def calculate_turn_rate(self, *, rad_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+    def calculate_turn_rate(self, rad_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
         TODO
 
@@ -175,7 +175,7 @@ class Drone(ABC):
         """
         return None
 
-    def calculate_turn_velocity(self, *, rate: float) -> Optional[float]:
+    def calculate_turn_velocity(self, rate: float) -> Optional[float]:
         """
         TODO
 
@@ -184,7 +184,7 @@ class Drone(ABC):
         """
         return None
 
-    def calculate_up_rate(self, *, m_per_s: float, allow_clipping: bool = True) -> Optional[float]:
+    def calculate_up_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
         TODO
 
@@ -194,7 +194,7 @@ class Drone(ABC):
         """
         return None
 
-    def calculate_up_velocity(self, *, rate: float) -> Optional[float]:
+    def calculate_up_velocity(self, rate: float) -> Optional[float]:
         """
         TODO
 
@@ -202,6 +202,33 @@ class Drone(ABC):
         :return:        TODO
         """
         return None
+
+    def clip_forward_velocity(self, m_per_s: float) -> float:
+        """
+        TODO
+
+        :param m_per_s: TODO
+        :return:        TODO
+        """
+        return self.calculate_forward_velocity(rate=self.calculate_forward_rate(m_per_s=m_per_s))
+
+    def clip_right_velocity(self, m_per_s: float) -> float:
+        """
+        TODO
+
+        :param m_per_s: TODO
+        :return:        TODO
+        """
+        return self.calculate_right_velocity(rate=self.calculate_right_rate(m_per_s=m_per_s))
+
+    def clip_up_velocity(self, m_per_s: float) -> float:
+        """
+        TODO
+
+        :param m_per_s: TODO
+        :return:        TODO
+        """
+        return self.calculate_up_velocity(rate=self.calculate_up_rate(m_per_s=m_per_s))
 
     # noinspection PyMethodMayBeStatic
     def get_expected_takeoff_height(self) -> Optional[float]:
