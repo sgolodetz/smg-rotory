@@ -27,6 +27,12 @@ class Drone(ABC):
     # The drone is in the process of performing an automated landing.
     LANDING: EState = EState(3)
 
+    # CONSTRUCTOR
+
+    def __init__(self):
+        """TODO"""
+        self.__localised_beacons: Dict[str, Beacon] = {}
+
     # PUBLIC ABSTRACT METHODS
 
     @abstractmethod
@@ -129,25 +135,27 @@ class Drone(ABC):
 
     # PUBLIC METHODS
 
-    def get_beacon_ranges(self) -> Dict[str, float]:
+    def get_beacon_ranges(self, drone_pos: Optional[np.ndarray] = None) -> Dict[str, float]:
         """
         Get the estimated ranges (in m) between the drone and any beacons that are within range.
 
         .. note::
             The number of ranges returned may vary over time.
 
-        :return:    A dictionary that maps the names of the beacons to their estimated ranges (in m).
+        :param drone_pos:   The current position of the drone (if available).
+        :return:            A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
-        # Most drones will not be equipped with a suitable receiver, so return the empty dictionary by default.
-        return {}
+        if drone_pos is None:
+            return {}
 
-    def get_beacons(self) -> Dict[str, Beacon]:
-        """
-        TODO
+        beacon_ranges: Dict[str, float] = {}
 
-        :return:    TODO
-        """
-        return {}
+        for beacon_name, beacon in self.__localised_beacons.items():
+            beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
+            if beacon_range <= beacon.max_range:
+                beacon_ranges[beacon_name] = beacon_range
+
+        return beacon_ranges
 
     # noinspection PyMethodMayBeStatic
     def get_expected_takeoff_height(self) -> Optional[float]:
@@ -166,6 +174,14 @@ class Drone(ABC):
         """
         return None
 
+    def get_localised_beacons(self) -> Dict[str, Beacon]:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        return self.__localised_beacons.copy()
+
     def get_state(self) -> Optional[EState]:
         """
         Try to get the current state of the drone.
@@ -182,15 +198,17 @@ class Drone(ABC):
         """
         return self.get_image(), None
 
-    def set_beacon(self, beacon_name: str, beacon: Optional[Beacon]) -> None:
+    def set_localised_beacon(self, beacon_name: str, beacon: Optional[Beacon]) -> None:
         """
         TODO
 
         :param beacon_name: TODO
         :param beacon:      TODO
         """
-        # This is a no-op by default.
-        pass
+        if beacon is not None:
+            self.__localised_beacons[beacon_name] = beacon
+        else:
+            del self.__localised_beacons[beacon_name]
 
     def update_gimbal_pitch(self, gimbal_pitch: float) -> None:
         """

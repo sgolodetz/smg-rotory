@@ -138,6 +138,8 @@ class ARDrone2(Drone):
         :param print_navdata_messages:      Whether or not to print navdata messages.
         :param video_endpoint:              The remote endpoint (IP address and port) from which to receive video.
         """
+        super.__init__()
+
         self.__current_camera: int = 0  # denotes the horizontal camera
         self.__dist_coeffs: List[Optional[np.ndarray]] = list(dist_coeffs)
         self.__drone_state: str = ""

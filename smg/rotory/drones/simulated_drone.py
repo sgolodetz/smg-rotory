@@ -11,7 +11,6 @@ from smg.rigging.cameras import Camera, SimpleCamera
 from smg.rigging.helpers import CameraPoseConverter, CameraUtil
 
 from .drone import Drone
-from ..util.beacon import Beacon
 
 
 class SimulatedDrone(Drone):
@@ -54,8 +53,9 @@ class SimulatedDrone(Drone):
                                 as an (fx, fy, cx, cy) tuple.
         :param linear_gain:     The amount by which to multiply the control inputs for linear drone movements.
         """
+        super().__init__()
+
         self.__angular_gain: float = angular_gain
-        self.__beacons: Dict[str, Beacon] = {}
         self.__gimbal_input_history: Deque[float] = deque()
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer \
             if image_renderer is not None else SimulatedDrone.blank_image_renderer
@@ -178,34 +178,22 @@ class SimulatedDrone(Drone):
         """
         return 100
 
-    def get_beacon_ranges(self) -> Dict[str, float]:
+    def get_beacon_ranges(self, drone_pos: Optional[np.ndarray] = None) -> Dict[str, float]:
         """
         Get the estimated ranges (in m) between the drone and any beacons that are within range.
 
         .. note::
             The number of ranges returned may vary over time.
 
-        :return:    A dictionary that maps the names of the beacons to their estimated ranges (in m).
+        :param drone_pos:   The current position of the drone (if available).
+        :return:            A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
-        beacon_ranges: Dict[str, float] = {}
+        # Since this is a simulated drone, we can automatically determine the drone's position if need be.
+        if drone_pos is None:
+            camera_w_t_c, _ = self.__get_poses()
+            drone_pos = camera_w_t_c[0:3, 3]
 
-        camera_w_t_c, _ = self.__get_poses()
-        drone_pos: np.ndarray = camera_w_t_c[0:3, 3]
-
-        for beacon_name, beacon in self.__beacons.items():
-            beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
-            if beacon_range <= beacon.max_range:
-                beacon_ranges[beacon_name] = beacon_range
-
-        return beacon_ranges
-
-    def get_beacons(self) -> Dict[str, Beacon]:
-        """
-        TODO
-
-        :return:    TODO
-        """
-        return self.__beacons.copy()
+        return super().get_beacon_ranges(drone_pos)
 
     def get_image(self) -> np.ndarray:
         """
@@ -298,18 +286,6 @@ class SimulatedDrone(Drone):
         """
         with self.__input_lock:
             self.__rc_up = np.clip(rate, -1.0, 1.0)
-
-    def set_beacon(self, beacon_name: str, beacon: Optional[Beacon]) -> None:
-        """
-        TODO
-
-        :param beacon_name: TODO
-        :param beacon:      TODO
-        """
-        if beacon is not None:
-            self.__beacons[beacon_name] = beacon
-        else:
-            del self.__beacons[beacon_name]
 
     def set_drone_origin(self, drone_origin: Camera) -> None:
         """
