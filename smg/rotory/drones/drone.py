@@ -1,7 +1,7 @@
 import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 
 class Drone(ABC):
@@ -143,6 +143,20 @@ class Drone(ABC):
         :return:    The most recently received value of the drone's height (in m), if available, or None otherwise.
         """
         return None
+
+    def get_range_measurements(self) -> List[float]:
+        """
+        Get any available measurements of the ranges (in m) between the drone and any transmitters
+        (e.g. ultra-wideband ones) that are present in the scene.
+
+        .. note::
+            The number of ranges returned may vary from one frame to the next. Moreover, the ranges
+            returned (if any) are not guaranteed to be in any particular order.
+
+        :return:    A list containing any available range measurements (in m).
+        """
+        # Most drones will not be equipped with a suitable receiver, so return the empty list by default.
+        return []
 
     def get_state(self) -> Optional[EState]:
         """

@@ -5,7 +5,7 @@ import time
 import vg
 
 from collections import deque
-from typing import Callable, Deque, Optional, Tuple
+from typing import Callable, Deque, List, Optional, Tuple
 
 from smg.rigging.cameras import Camera, SimpleCamera
 from smg.rigging.helpers import CameraPoseConverter, CameraUtil
@@ -31,6 +31,43 @@ class SimulatedDrone(Drone):
     # each call. If the drone is still on the ground, the takeoff has failed. If the drone's taking off, we need to
     # continue calling the function iteratively. If the drone is flying, we can stop.
     TakeoffController = Callable[[SimpleCamera], Drone.EState]
+
+    # NESTED TYPES
+
+    class Transmitter:
+        """TODO"""
+
+        # CONSTRUCTOR
+
+        def __init__(self, position: np.ndarray, max_range: float):
+            """
+            TODO
+
+            :param position:    TODO
+            :param max_range:   TODO
+            """
+            self.__position: np.ndarray = position
+            self.__max_range: float = max_range
+
+        # PROPERTIES
+
+        @property
+        def max_range(self) -> float:
+            """
+            TODO
+
+            :return:    TODO
+            """
+            return self.__max_range
+
+        @property
+        def position(self) -> np.ndarray:
+            """
+            TODO
+
+            :return:    TODO
+            """
+            return self.__position
 
     # CONSTRUCTOR
 
@@ -63,6 +100,7 @@ class SimulatedDrone(Drone):
         self.__linear_gain: float = linear_gain
         self.__should_terminate: threading.Event = threading.Event()
         self.__takeoff_controller: Optional[SimulatedDrone.TakeoffController] = self.default_takeoff_controller
+        self.__transmitters: List[SimulatedDrone.Transmitter] = []
 
         # The simulation variables, together with their locks.
         self.__drone_origin: SimpleCamera = CameraUtil.make_default_camera()
@@ -127,6 +165,14 @@ class SimulatedDrone(Drone):
         return np.zeros((height, width, 3), dtype=np.uint8)
 
     # PUBLIC METHODS
+
+    def add_transmitter(self, transmitter: Transmitter) -> None:
+        """
+        TODO
+
+        :param transmitter: TODO
+        """
+        self.__transmitters.append(transmitter)
 
     def default_landing_controller(self, drone_cur: SimpleCamera) -> Drone.EState:
         """
@@ -216,6 +262,29 @@ class SimulatedDrone(Drone):
         :return:    The camera intrinsics as an (fx, fy, cx, cy) tuple.
         """
         return self.__intrinsics
+
+    def get_range_measurements(self) -> List[float]:
+        """
+        Get any available measurements of the ranges (in m) between the drone and any transmitters
+        (e.g. ultra-wideband ones) that are present in the scene.
+
+        .. note::
+            The number of ranges returned may vary from one frame to the next. Moreover, the ranges
+            returned (if any) are not guaranteed to be in any particular order.
+
+        :return:    A list containing any available range measurements (in m).
+        """
+        measurements: List[float] = []
+
+        camera_w_t_c, _ = self.__get_poses()
+        drone_pos: np.ndarray = camera_w_t_c[0:3, 3]
+
+        for transmitter in self.__transmitters:
+            measurement: float = np.linalg.norm(transmitter.position - drone_pos)
+            if measurement <= transmitter.max_range:
+                measurements.append(measurement)
+
+        return measurements
 
     def get_state(self) -> Optional[Drone.EState]:
         """
