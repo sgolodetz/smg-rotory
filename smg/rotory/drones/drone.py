@@ -135,25 +135,30 @@ class Drone(ABC):
 
     # PUBLIC METHODS
 
-    def get_beacon_ranges(self, drone_pos: Optional[np.ndarray] = None) -> Dict[str, float]:
+    def get_beacon_ranges(self, drone_pos: Optional[np.ndarray] = None, *, include_localised: bool = True,
+                          include_unlocalised: bool = True) -> Dict[str, float]:
         """
         Get the estimated ranges (in m) between the drone and any beacons that are within range.
 
         .. note::
             The number of ranges returned may vary over time.
 
-        :param drone_pos:   The current position of the drone (if available).
-        :return:            A dictionary that maps the names of the beacons to their estimated ranges (in m).
+        :param drone_pos:           The current position of the drone (if available).
+        :param include_localised:   TODO
+        :param include_unlocalised: TODO
+        :return:                    A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
-        if drone_pos is None:
-            return {}
-
         beacon_ranges: Dict[str, float] = {}
 
-        for beacon_name, beacon in self.__localised_beacons.items():
-            beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
-            if beacon_range <= beacon.max_range:
-                beacon_ranges[beacon_name] = beacon_range
+        if include_localised and drone_pos is not None:
+            for beacon_name, beacon in self.__localised_beacons.items():
+                beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
+                if beacon_range <= beacon.max_range:
+                    beacon_ranges[beacon_name] = beacon_range
+
+        if include_unlocalised:
+            # TODO: Unlocalised beacons.
+            pass
 
         return beacon_ranges
 
