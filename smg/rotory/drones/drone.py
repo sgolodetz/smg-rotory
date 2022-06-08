@@ -1,7 +1,9 @@
 import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple
+from typing import Dict, Optional, Tuple
+
+from ..util.beacon import Beacon
 
 
 class Drone(ABC):
@@ -127,6 +129,26 @@ class Drone(ABC):
 
     # PUBLIC METHODS
 
+    def get_beacon_ranges(self) -> Dict[str, float]:
+        """
+        Get the estimated ranges (in m) between the drone and any beacons that are within range.
+
+        .. note::
+            The number of ranges returned may vary over time.
+
+        :return:    A dictionary that maps the names of the beacons to their estimated ranges (in m).
+        """
+        # Most drones will not be equipped with a suitable receiver, so return the empty dictionary by default.
+        return {}
+
+    def get_beacons(self) -> Dict[str, Beacon]:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        return {}
+
     # noinspection PyMethodMayBeStatic
     def get_expected_takeoff_height(self) -> Optional[float]:
         """
@@ -144,20 +166,6 @@ class Drone(ABC):
         """
         return None
 
-    def get_range_measurements(self) -> List[float]:
-        """
-        Get any available measurements of the ranges (in m) between the drone and any transmitters
-        (e.g. ultra-wideband ones) that are present in the scene.
-
-        .. note::
-            The number of ranges returned may vary from one frame to the next. Moreover, the ranges
-            returned (if any) are not guaranteed to be in any particular order.
-
-        :return:    A list containing any available range measurements (in m).
-        """
-        # Most drones will not be equipped with a suitable receiver, so return the empty list by default.
-        return []
-
     def get_state(self) -> Optional[EState]:
         """
         Try to get the current state of the drone.
@@ -173,6 +181,16 @@ class Drone(ABC):
         :return:    A pair consisting of the most recent image received from the drone and its (optional) timestamp.
         """
         return self.get_image(), None
+
+    def set_beacon(self, beacon_name: str, beacon: Optional[Beacon]) -> None:
+        """
+        TODO
+
+        :param beacon_name: TODO
+        :param beacon:      TODO
+        """
+        # This is a no-op by default.
+        pass
 
     def update_gimbal_pitch(self, gimbal_pitch: float) -> None:
         """

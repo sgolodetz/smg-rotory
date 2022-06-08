@@ -5,12 +5,13 @@ import time
 import vg
 
 from collections import deque
-from typing import Callable, Deque, List, Optional, Tuple
+from typing import Callable, Deque, Dict, Optional, Tuple
 
 from smg.rigging.cameras import Camera, SimpleCamera
 from smg.rigging.helpers import CameraPoseConverter, CameraUtil
 
 from .drone import Drone
+from ..util.beacon import Beacon
 
 
 class SimulatedDrone(Drone):
@@ -31,43 +32,6 @@ class SimulatedDrone(Drone):
     # each call. If the drone is still on the ground, the takeoff has failed. If the drone's taking off, we need to
     # continue calling the function iteratively. If the drone is flying, we can stop.
     TakeoffController = Callable[[SimpleCamera], Drone.EState]
-
-    # NESTED TYPES
-
-    class Transmitter:
-        """TODO"""
-
-        # CONSTRUCTOR
-
-        def __init__(self, position: np.ndarray, max_range: float):
-            """
-            TODO
-
-            :param position:    TODO
-            :param max_range:   TODO
-            """
-            self.__position: np.ndarray = position
-            self.__max_range: float = max_range
-
-        # PROPERTIES
-
-        @property
-        def max_range(self) -> float:
-            """
-            TODO
-
-            :return:    TODO
-            """
-            return self.__max_range
-
-        @property
-        def position(self) -> np.ndarray:
-            """
-            TODO
-
-            :return:    TODO
-            """
-            return self.__position
 
     # CONSTRUCTOR
 
@@ -91,6 +55,7 @@ class SimulatedDrone(Drone):
         :param linear_gain:     The amount by which to multiply the control inputs for linear drone movements.
         """
         self.__angular_gain: float = angular_gain
+        self.__beacons: Dict[str, Beacon] = {}
         self.__gimbal_input_history: Deque[float] = deque()
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer \
             if image_renderer is not None else SimulatedDrone.blank_image_renderer
@@ -100,7 +65,6 @@ class SimulatedDrone(Drone):
         self.__linear_gain: float = linear_gain
         self.__should_terminate: threading.Event = threading.Event()
         self.__takeoff_controller: Optional[SimulatedDrone.TakeoffController] = self.default_takeoff_controller
-        self.__transmitters: List[SimulatedDrone.Transmitter] = []
 
         # The simulation variables, together with their locks.
         self.__drone_origin: SimpleCamera = CameraUtil.make_default_camera()
@@ -166,14 +130,6 @@ class SimulatedDrone(Drone):
 
     # PUBLIC METHODS
 
-    def add_transmitter(self, transmitter: Transmitter) -> None:
-        """
-        TODO
-
-        :param transmitter: TODO
-        """
-        self.__transmitters.append(transmitter)
-
     def default_landing_controller(self, drone_cur: SimpleCamera) -> Drone.EState:
         """
         Run an iteration of the default landing controller.
@@ -222,6 +178,35 @@ class SimulatedDrone(Drone):
         """
         return 100
 
+    def get_beacon_ranges(self) -> Dict[str, float]:
+        """
+        Get the estimated ranges (in m) between the drone and any beacons that are within range.
+
+        .. note::
+            The number of ranges returned may vary over time.
+
+        :return:    A dictionary that maps the names of the beacons to their estimated ranges (in m).
+        """
+        beacon_ranges: Dict[str, float] = {}
+
+        camera_w_t_c, _ = self.__get_poses()
+        drone_pos: np.ndarray = camera_w_t_c[0:3, 3]
+
+        for beacon_name, beacon in self.__beacons.items():
+            beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
+            if beacon_range <= beacon.max_range:
+                beacon_ranges[beacon_name] = beacon_range
+
+        return beacon_ranges
+
+    def get_beacons(self) -> Dict[str, Beacon]:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        return self.__beacons.copy()
+
     def get_image(self) -> np.ndarray:
         """
         Get the most recent image received from the drone.
@@ -262,29 +247,6 @@ class SimulatedDrone(Drone):
         :return:    The camera intrinsics as an (fx, fy, cx, cy) tuple.
         """
         return self.__intrinsics
-
-    def get_range_measurements(self) -> List[float]:
-        """
-        Get any available measurements of the ranges (in m) between the drone and any transmitters
-        (e.g. ultra-wideband ones) that are present in the scene.
-
-        .. note::
-            The number of ranges returned may vary from one frame to the next. Moreover, the ranges
-            returned (if any) are not guaranteed to be in any particular order.
-
-        :return:    A list containing any available range measurements (in m).
-        """
-        measurements: List[float] = []
-
-        camera_w_t_c, _ = self.__get_poses()
-        drone_pos: np.ndarray = camera_w_t_c[0:3, 3]
-
-        for transmitter in self.__transmitters:
-            measurement: float = np.linalg.norm(transmitter.position - drone_pos)
-            if measurement <= transmitter.max_range:
-                measurements.append(measurement)
-
-        return measurements
 
     def get_state(self) -> Optional[Drone.EState]:
         """
@@ -336,6 +298,18 @@ class SimulatedDrone(Drone):
         """
         with self.__input_lock:
             self.__rc_up = np.clip(rate, -1.0, 1.0)
+
+    def set_beacon(self, beacon_name: str, beacon: Optional[Beacon]) -> None:
+        """
+        TODO
+
+        :param beacon_name: TODO
+        :param beacon:      TODO
+        """
+        if beacon is not None:
+            self.__beacons[beacon_name] = beacon
+        else:
+            del self.__beacons[beacon_name]
 
     def set_drone_origin(self, drone_origin: Camera) -> None:
         """
