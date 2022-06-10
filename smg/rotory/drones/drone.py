@@ -127,6 +127,109 @@ class Drone(ABC):
 
     # PUBLIC METHODS
 
+    def calculate_forward_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param m_per_s:         TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        return None
+
+    def calculate_forward_velocity(self, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return None
+
+    def calculate_right_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param m_per_s:         TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        return None
+
+    def calculate_right_velocity(self, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return None
+
+    def calculate_turn_rate(self, rad_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param rad_per_s:       TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        return None
+
+    def calculate_turn_velocity(self, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return None
+
+    def calculate_up_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param m_per_s:         TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        return None
+
+    def calculate_up_velocity(self, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return None
+
+    def clip_forward_velocity(self, m_per_s: float) -> float:
+        """
+        TODO
+
+        :param m_per_s: TODO
+        :return:        TODO
+        """
+        return self.calculate_forward_velocity(rate=self.calculate_forward_rate(m_per_s=m_per_s))
+
+    def clip_right_velocity(self, m_per_s: float) -> float:
+        """
+        TODO
+
+        :param m_per_s: TODO
+        :return:        TODO
+        """
+        return self.calculate_right_velocity(rate=self.calculate_right_rate(m_per_s=m_per_s))
+
+    def clip_up_velocity(self, m_per_s: float) -> float:
+        """
+        TODO
+
+        :param m_per_s: TODO
+        :return:        TODO
+        """
+        return self.calculate_up_velocity(rate=self.calculate_up_rate(m_per_s=m_per_s))
+
     # noinspection PyMethodMayBeStatic
     def get_expected_takeoff_height(self) -> Optional[float]:
         """
@@ -159,6 +262,17 @@ class Drone(ABC):
         :return:    A pair consisting of the most recent image received from the drone and its (optional) timestamp.
         """
         return self.get_image(), None
+
+    def has_calibrated_rates(self) -> bool:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        return self.calculate_forward_velocity(1.0) is not None \
+            and self.calculate_right_velocity(1.0) is not None \
+            and self.calculate_turn_velocity(1.0) is not None \
+            and self.calculate_up_velocity(1.0) is not None
 
     def update_gimbal_pitch(self, gimbal_pitch: float) -> None:
         """
