@@ -151,7 +151,8 @@ class Tello(Drone):
         :param allow_clipping:  TODO
         :return:                TODO
         """
-        rate: float = (m_per_s + 0.0875) / 0.8832
+        # rate: float = (m_per_s + 0.0755) / 0.6874
+        rate: float = m_per_s / 0.35
         if np.fabs(rate) <= 1.0:
             return rate
         elif allow_clipping:
@@ -166,7 +167,8 @@ class Tello(Drone):
         :param rate:    TODO
         :return:        TODO
         """
-        return 0.8832 * rate - 0.0875
+        return 0.35 * rate
+        # return 0.6874 * rate - 0.0755
 
     def calculate_turn_rate(self, rad_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
@@ -209,7 +211,8 @@ class Tello(Drone):
         :param allow_clipping:  TODO
         :return:                TODO
         """
-        rate: float = (m_per_s + 0.0522) / 0.4521
+        # rate: float = (m_per_s + 0.0522) / 0.4521
+        rate: float = m_per_s / 0.25
         if np.fabs(rate) <= 1.0:
             return rate
         elif allow_clipping:
@@ -224,7 +227,8 @@ class Tello(Drone):
         :param rate:    TODO
         :return:        TODO
         """
-        return 0.4521 * rate - 0.0522
+        return 0.25 * rate
+        # return 0.4521 * rate - 0.0522
 
     def get_battery_level(self) -> Optional[int]:
         """
