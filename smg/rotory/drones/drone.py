@@ -263,6 +263,17 @@ class Drone(ABC):
         """
         return self.get_image(), None
 
+    def has_calibrated_rates(self) -> bool:
+        """
+        TODO
+
+        :return:    TODO
+        """
+        return self.calculate_forward_velocity(1.0) is not None \
+            and self.calculate_right_velocity(1.0) is not None \
+            and self.calculate_turn_velocity(1.0) is not None \
+            and self.calculate_up_velocity(1.0) is not None
+
     def update_gimbal_pitch(self, gimbal_pitch: float) -> None:
         """
         Update the pitch of the drone's gimbal (if it has one that can be pitched so as to look up/down).
