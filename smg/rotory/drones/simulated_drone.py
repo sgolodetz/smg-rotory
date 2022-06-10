@@ -553,6 +553,6 @@ class SimulatedDrone(Drone):
         if np.fabs(rate) <= 1.0:
             return rate
         elif allow_clipping:
-            return np.clip(rate, -1.0, 1.0)
+            return float(np.clip(rate, -1.0, 1.0))
         else:
             return None
