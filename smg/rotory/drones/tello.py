@@ -118,6 +118,114 @@ class Tello(Drone):
 
     # PUBLIC METHODS
 
+    def calculate_forward_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param m_per_s:         TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        rate: float = (m_per_s + 0.0755) / 0.6874
+        if np.fabs(rate) <= 1.0:
+            return rate
+        elif allow_clipping:
+            return float(np.clip(rate, -1.0, 1.0))
+        else:
+            return None
+
+    def calculate_forward_velocity(self, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return 0.6874 * rate - 0.0755
+
+    def calculate_right_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param m_per_s:         TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        rate: float = (m_per_s + 0.0875) / 0.8832
+        if np.fabs(rate) <= 1.0:
+            return rate
+        elif allow_clipping:
+            return float(np.clip(rate, -1.0, 1.0))
+        else:
+            return None
+
+    def calculate_right_velocity(self, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return 0.8832 * rate - 0.0875
+
+    def calculate_turn_rate(self, rad_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param rad_per_s:       TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        abs_rad_per_s: float = np.fabs(rad_per_s)
+
+        if abs_rad_per_s <= 0.526913819:
+            rate: float = (-0.5211 + np.sqrt(0.2937691266672 + 5.8512 * abs_rad_per_s)) / 2.9256
+        else:
+            rate: float = (abs_rad_per_s + 0.306576181) / 1.8522
+
+        return np.sign(rad_per_s) * rate
+
+    def calculate_turn_velocity(self, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        abs_rate: float = np.fabs(rate)
+
+        if abs_rate <= 0.45:
+            velocity: float = 1.4628 * abs_rate ** 2 + 0.5211 * abs_rate - 0.003798181
+        else:
+            velocity: float = 1.8522 * abs_rate - 0.306576181
+
+        return np.sign(rate) * velocity
+
+    def calculate_up_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        TODO
+
+        :param m_per_s:         TODO
+        :param allow_clipping:  TODO
+        :return:                TODO
+        """
+        rate: float = (m_per_s + 0.0522) / 0.4521
+        if np.fabs(rate) <= 1.0:
+            return rate
+        elif allow_clipping:
+            return float(np.clip(rate, -1.0, 1.0))
+        else:
+            return None
+
+    def calculate_up_velocity(self, rate: float) -> Optional[float]:
+        """
+        TODO
+
+        :param rate:    TODO
+        :return:        TODO
+        """
+        return 0.4521 * rate - 0.0522
+
     def get_battery_level(self) -> Optional[int]:
         """
         Try to get the most recently received value of the remaining battery %.
