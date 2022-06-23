@@ -279,7 +279,7 @@ class SimulatedDrone(Drone):
         Run an iteration of the default landing controller.
 
         :param drone_cur:   A camera corresponding to the drone's current pose.
-        :param time_offset: TODO
+        :param time_offset: The time offset (in s) since the last iteration of the simulation.
         :return:            The state of the drone after this iteration of the controller.
         """
         # Make a local copy of the drone's origin.
@@ -302,7 +302,7 @@ class SimulatedDrone(Drone):
         Run an iteration of the default takeoff controller.
 
         :param drone_cur:   A camera corresponding to the drone's current pose.
-        :param time_offset: TODO
+        :param time_offset: The time offset (in s) since the last iteration of the simulation.
         :return:            The state of the drone after this iteration of the controller.
         """
         # Make a local copy of the drone's origin.
@@ -538,7 +538,7 @@ class SimulatedDrone(Drone):
                 rc_yaw: float = self.__rc_yaw
                 state: Drone.EState = self.__state
 
-            # TODO: Comment here.
+            # Try to calculate the time offset (in s) since the last iteration of the simulation.
             current_time: float = timer()
             time_offset: Optional[float] = current_time - previous_time if previous_time is not None else None
             previous_time = current_time
@@ -609,12 +609,25 @@ class SimulatedDrone(Drone):
     @staticmethod
     def __calculate_rate(*, units_per_s: float, max_units_per_s: float, allow_clipping: bool) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would move/turn the drone at the specified velocity (in units/s).
 
-        :param units_per_s:     TODO
-        :param max_units_per_s: TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            This function assumes that:
+            - We know the velocity corresponding to a rate of 1.0 (passed in as max_units_per_s).
+            - The drone responds linearly to rates between 0.0 and 1.0 (e.g. a rate of 0.5 yields
+              a velocity of max_units_per_s / 2).
+            - The drone responds analogously to negative rates.
+        .. note::
+            If the specified velocity is higher than the maximum, the "raw" rate calculated will
+            be outside the [-1,1] range. If that happens, the function will either clip the "raw"
+            rate to one that is in range, if allow_clipping is set to True, or return None if it's
+            set to False.
+
+        :param units_per_s:     The target velocity (in units/s).
+        :param max_units_per_s: The velocity (in units/s) corresponding to a maximum rate of 1.0.
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in units/s), if it's in range, else the result of
+                                clipping it to the [-1,1] range if clipping is allowed, else None.
         """
         rate: float = units_per_s / max_units_per_s
         if np.fabs(rate) <= 1.0:
