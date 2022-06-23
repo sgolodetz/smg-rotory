@@ -614,14 +614,13 @@ class SimulatedDrone(Drone):
         .. note::
             This function assumes that:
             - We know the velocity corresponding to a rate of 1.0 (passed in as max_units_per_s).
-            - The drone responds linearly to rates between 0.0 and 1.0 (e.g. a rate of 0.5 yields
-              a velocity of max_units_per_s / 2).
+            - The drone responds linearly to rates between 0.0 and 1.0 (e.g. a rate of 0.5 yields a velocity of
+              max_units_per_s / 2).
             - The drone responds analogously to negative rates.
         .. note::
-            If the specified velocity is higher than the maximum, the "raw" rate calculated will
-            be outside the [-1,1] range. If that happens, the function will either clip the "raw"
-            rate to one that is in range, if allow_clipping is set to True, or return None if it's
-            set to False.
+            If the specified velocity is higher than the maximum, the "raw" rate calculated will be outside the
+            [-1,1] range. If that happens, the function will either clip the "raw" rate to one that is in range,
+            if allow_clipping is set to True, or return None if it's set to False.
 
         :param units_per_s:     The target velocity (in units/s).
         :param max_units_per_s: The velocity (in units/s) corresponding to a maximum rate of 1.0.
