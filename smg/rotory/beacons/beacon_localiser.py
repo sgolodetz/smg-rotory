@@ -26,7 +26,7 @@ class BeaconLocaliser:
 
         # TODO
         self.__beacon_measurements: Dict[str, List[Tuple[np.ndarray, float]]] = defaultdict(list)
-        self.__dirty_beacon_counts: Dict[str, int] = defaultdict(int)
+        self.__dirty_beacons: Set[str] = set()
         self.__localised_beacons: Dict[str, Beacon] = {}
         self.__lock: threading.Lock = threading.Lock()
 
@@ -62,9 +62,11 @@ class BeaconLocaliser:
         # TODO
         with self.__lock:
             for beacon_name, beacon_range in beacon_ranges.items():
-                self.__beacon_measurements[beacon_name].append((receiver_pos, beacon_range))
-                self.__beacon_measurements[beacon_name] = self.__beacon_measurements[beacon_name][-50:]
-                self.__dirty_beacon_counts[beacon_name] += 1
+                if len(self.__beacon_measurements[beacon_name]) == 0 \
+                        or np.linalg.norm(receiver_pos - self.__beacon_measurements[beacon_name][-1][0]) > 0.05:
+                    self.__beacon_measurements[beacon_name].append((receiver_pos, beacon_range))
+                    self.__beacon_measurements[beacon_name] = self.__beacon_measurements[beacon_name][-50:]
+                    self.__dirty_beacons.add(beacon_name)
 
         # print(self.__beacon_measurements)
         # if "Foo" in self.__beacon_measurements:
@@ -91,6 +93,9 @@ class BeaconLocaliser:
             if beacon_name in self.__beacon_measurements:
                 del self.__beacon_measurements[beacon_name]
 
+            if f"L_{beacon_name}" in self.__localised_beacons:
+                del self.__localised_beacons[f"L_{beacon_name}"]
+
     def terminate(self) -> None:
         # TODO
         if not self.__should_terminate.is_set():
@@ -107,9 +112,10 @@ class BeaconLocaliser:
             # Make a copy of the shared variables so that we only need to hold the lock very briefly.
             with self.__lock:
                 beacon_measurements: Dict[str, List[Tuple[np.ndarray, float]]] = self.__beacon_measurements.copy()
-                dirty_beacon_counts: Dict[str, int] = self.__dirty_beacon_counts.copy()
+                dirty_beacons: Set[str] = self.__dirty_beacons.copy()
+                self.__dirty_beacons.clear()
 
-            for beacon_name in dirty_beacon_counts:
+            for beacon_name in dirty_beacons:
                 measurements_for_beacon: Optional[List[Tuple[np.ndarray, float]]] = beacon_measurements.get(beacon_name)
                 if measurements_for_beacon is None:
                     continue
@@ -119,9 +125,6 @@ class BeaconLocaliser:
                 if beacon_pos is not None:
                     with self.__lock:
                         self.__localised_beacons[f"L_{beacon_name}"] = Beacon(beacon_pos, 1.0)
-                        self.__dirty_beacon_counts[beacon_name] -= 1
-                        if self.__dirty_beacon_counts[beacon_name] == 0:
-                            del self.__dirty_beacon_counts[beacon_name]
 
                     # print(f"Beacon {beacon_name} localised at {beacon_pos}!", self.__test_beacons["Foo"].position)
 
