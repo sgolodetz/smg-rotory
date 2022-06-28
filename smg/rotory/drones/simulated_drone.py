@@ -116,11 +116,22 @@ class SimulatedDrone(Drone):
 
     def calculate_forward_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would move the drone forward or backward with the specified
+        velocity (in m/s), if one exists.
 
-        :param m_per_s:         TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            The specified velocity may not be achievable in practice, e.g. due to physical limitations of the drone.
+            This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the function
+            will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or return None
+            if it's set to False.
+        .. note::
+            In terms of signs, a +ve velocity means "move forward" and a -ve velocity means "move backward".
+            The calculated rate will be +ve when moving forward and -ve when moving backward.
+
+        :param m_per_s:         The velocity (in m/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
         """
         return SimulatedDrone.__calculate_rate(
             units_per_s=m_per_s,
@@ -130,20 +141,37 @@ class SimulatedDrone(Drone):
 
     def calculate_forward_velocity(self, rate: float) -> Optional[float]:
         """
-        TODO
+        Calculate the velocity (in m/s) at which the specified rate (in [-1,1]) will move the drone forward
+        or backward.
 
-        :param rate:    TODO
-        :return:        TODO
+        .. note::
+            In terms of signs, a rate of 1.0 means "move forward at maximum speed" and a rate of -1.0
+            means "move backward at maximum speed". The velocity will be +ve when moving forward and
+            -ve when moving backward.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding velocity (in m/s).
         """
         return rate * 2.0
 
     def calculate_right_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would move the drone right or left with the specified velocity (in m/s),
+        if one exists.
 
-        :param m_per_s:         TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            The specified velocity may not be achievable in practice, e.g. due to physical limitations of the drone.
+            This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the function
+            will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or return None
+            if it's set to False.
+        .. note::
+            In terms of signs, a +ve velocity means "move right" and a -ve velocity means "move left".
+            The calculated rate will be +ve when moving right and -ve when moving left.
+
+        :param m_per_s:         The velocity (in m/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
         """
         return SimulatedDrone.__calculate_rate(
             units_per_s=m_per_s,
@@ -153,22 +181,39 @@ class SimulatedDrone(Drone):
 
     def calculate_right_velocity(self, rate: float) -> Optional[float]:
         """
-        TODO
+        Calculate the velocity (in m/s) at which the specified rate (in [-1,1]) will move the drone right or left.
 
-        :param rate:    TODO
-        :return:        TODO
+        .. note::
+            In terms of signs, a rate of 1.0 means "move right at maximum speed" and a rate of -1.0
+            means "move left at maximum speed". The velocity will be +ve when moving right and -ve
+            when moving left.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding velocity (in m/s).
         """
         return rate * 2.0
 
     def calculate_turn_rate(self, rad_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would turn the drone right or left with the specified
+        angular velocity (in rad/s), if one exists.
 
-        :param rad_per_s:       TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            The specified angular velocity may not be achievable in practice, e.g. due to physical limitations of the
+            drone. This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the
+            function will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or
+            return None if it's set to False.
+        .. note::
+            In terms of signs, a +ve angular velocity means "turn left" and a -ve velocity means "turn right".
+            The calculated rate will be +ve when turning right and -ve when turning left. Note that we use
+            different signs for the velocities and the rates, as angles are usually measured anti-clockwise
+            around a circle.
+
+        :param rad_per_s:       The angular velocity (in rad/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
         """
-        # TODO
         return SimulatedDrone.__calculate_rate(
             units_per_s=rad_per_s,
             max_units_per_s=abs(self.calculate_turn_velocity(rate=1.0)),
@@ -177,20 +222,37 @@ class SimulatedDrone(Drone):
 
     def calculate_turn_velocity(self, rate: float) -> Optional[float]:
         """
-        TODO
+        Calculate the angular velocity (in rad/s) at which the specified rate (in [-1,1]) will turn the drone
+        right or left.
 
-        :param rate:    TODO
-        :return:        TODO
+        .. note::
+            In terms of signs, a rate of 1.0 means "turn right at maximum speed" and a rate of -1.0
+            means "turn left at maximum speed". The angular velocity will be -ve when turning right,
+            and +ve when turning left, as angles are usually measured anti-clockwise around a circle.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding angular velocity (in rad/s).
         """
         return -rate * np.pi / 2
 
     def calculate_up_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would move the drone up or down with the specified velocity (in m/s),
+        if one exists.
 
-        :param m_per_s:         TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            The specified velocity may not be achievable in practice, e.g. due to physical limitations of the drone.
+            This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the function
+            will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or return None
+            if it's set to False.
+        .. note::
+            In terms of signs, a +ve velocity means "move up" and a -ve velocity means "move down".
+            The calculated rate will be +ve when moving up and -ve when moving down.
+
+        :param m_per_s:         The velocity (in m/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
         """
         return SimulatedDrone.__calculate_rate(
             units_per_s=m_per_s,
@@ -200,10 +262,15 @@ class SimulatedDrone(Drone):
 
     def calculate_up_velocity(self, rate: float) -> Optional[float]:
         """
-        TODO
+        Calculate the velocity (in m/s) at which the specified rate (in [-1,1]) will move the drone up or down.
 
-        :param rate:    TODO
-        :return:        TODO
+        .. note::
+            In terms of signs, a rate of 1.0 means "move up at maximum speed" and a rate of -1.0
+            means "move down at maximum speed". The velocity will be +ve when moving up and -ve
+            when moving down.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding velocity (in m/s).
         """
         return rate * 2.0
 
@@ -212,7 +279,7 @@ class SimulatedDrone(Drone):
         Run an iteration of the default landing controller.
 
         :param drone_cur:   A camera corresponding to the drone's current pose.
-        :param time_offset: TODO
+        :param time_offset: The time offset (in s) since the last iteration of the simulation.
         :return:            The state of the drone after this iteration of the controller.
         """
         # Make a local copy of the drone's origin.
@@ -235,7 +302,7 @@ class SimulatedDrone(Drone):
         Run an iteration of the default takeoff controller.
 
         :param drone_cur:   A camera corresponding to the drone's current pose.
-        :param time_offset: TODO
+        :param time_offset: The time offset (in s) since the last iteration of the simulation.
         :return:            The state of the drone after this iteration of the controller.
         """
         # Make a local copy of the drone's origin.
@@ -453,10 +520,12 @@ class SimulatedDrone(Drone):
 
     def __process_simulation(self) -> None:
         """Run the simulation thread."""
+        # Initialise the previous time variable, which records the timestamp of the last iteration of the simulation.
+        previous_time: Optional[float] = None
+
         # Construct the camera corresponding to the master pose for the drone (the poses of its camera and chassis
         # will be derived from this each frame).
         master_cam: SimpleCamera = CameraUtil.make_default_camera()
-        previous_time: Optional[float] = None
 
         # Until the simulation should terminate:
         while not self.__should_terminate.is_set():
@@ -471,7 +540,7 @@ class SimulatedDrone(Drone):
                 rc_yaw: float = self.__rc_yaw
                 state: Drone.EState = self.__state
 
-            # TODO: Comment here.
+            # Try to calculate the time offset (in s) since the last iteration of the simulation.
             current_time: float = timer()
             time_offset: Optional[float] = current_time - previous_time if previous_time is not None else None
             previous_time = current_time
@@ -542,12 +611,24 @@ class SimulatedDrone(Drone):
     @staticmethod
     def __calculate_rate(*, units_per_s: float, max_units_per_s: float, allow_clipping: bool) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would move/turn the drone at the specified velocity (in units/s).
 
-        :param units_per_s:     TODO
-        :param max_units_per_s: TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            This function assumes that:
+            - We know the velocity corresponding to a rate of 1.0 (passed in as max_units_per_s).
+            - The drone responds linearly to rates between 0.0 and 1.0 (e.g. a rate of 0.5 yields a velocity of
+              max_units_per_s / 2).
+            - The drone responds analogously to negative rates.
+        .. note::
+            If the specified velocity is higher than the maximum, the "raw" rate calculated will be outside the
+            [-1,1] range. If that happens, the function will either clip the "raw" rate to one that is in range,
+            if allow_clipping is set to True, or return None if it's set to False.
+
+        :param units_per_s:     The target velocity (in units/s).
+        :param max_units_per_s: The velocity (in units/s) corresponding to a maximum rate of 1.0.
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in units/s), if it's in range, else the result of
+                                clipping it to the [-1,1] range if clipping is allowed, else None.
         """
         rate: float = units_per_s / max_units_per_s
         if np.fabs(rate) <= 1.0:

@@ -129,106 +129,174 @@ class Drone(ABC):
 
     def calculate_forward_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would move the drone forward or backward with the specified
+        velocity (in m/s), if one exists.
 
-        :param m_per_s:         TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            The specified velocity may not be achievable in practice, e.g. due to physical limitations of the drone.
+            This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the function
+            will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or return None
+            if it's set to False.
+        .. note::
+            In terms of signs, a +ve velocity means "move forward" and a -ve velocity means "move backward".
+            The calculated rate will be +ve when moving forward and -ve when moving backward.
+
+        :param m_per_s:         The velocity (in m/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
         """
         return None
 
     def calculate_forward_velocity(self, rate: float) -> Optional[float]:
         """
-        TODO
+        Calculate the velocity (in m/s) at which the specified rate (in [-1,1]) will move the drone forward
+        or backward.
 
-        :param rate:    TODO
-        :return:        TODO
+        .. note::
+            In terms of signs, a rate of 1.0 means "move forward at maximum speed" and a rate of -1.0
+            means "move backward at maximum speed". The velocity will be +ve when moving forward and
+            -ve when moving backward.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding velocity (in m/s).
         """
         return None
 
     def calculate_right_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would move the drone right or left with the specified velocity (in m/s),
+        if one exists.
 
-        :param m_per_s:         TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            The specified velocity may not be achievable in practice, e.g. due to physical limitations of the drone.
+            This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the function
+            will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or return None
+            if it's set to False.
+        .. note::
+            In terms of signs, a +ve velocity means "move right" and a -ve velocity means "move left".
+            The calculated rate will be +ve when moving right and -ve when moving left.
+
+        :param m_per_s:         The velocity (in m/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
         """
         return None
 
     def calculate_right_velocity(self, rate: float) -> Optional[float]:
         """
-        TODO
+        Calculate the velocity (in m/s) at which the specified rate (in [-1,1]) will move the drone right or left.
 
-        :param rate:    TODO
-        :return:        TODO
+        .. note::
+            In terms of signs, a rate of 1.0 means "move right at maximum speed" and a rate of -1.0
+            means "move left at maximum speed". The velocity will be +ve when moving right and -ve
+            when moving left.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding velocity (in m/s).
         """
         return None
 
     def calculate_turn_rate(self, rad_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would turn the drone right or left with the specified
+        angular velocity (in rad/s), if one exists.
 
-        :param rad_per_s:       TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            The specified angular velocity may not be achievable in practice, e.g. due to physical limitations of the
+            drone. This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the
+            function will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or
+            return None if it's set to False.
+        .. note::
+            In terms of signs, a +ve angular velocity means "turn left" and a -ve velocity means "turn right".
+            The calculated rate will be +ve when turning right and -ve when turning left. Note that we use
+            different signs for the velocities and the rates, as angles are usually measured anti-clockwise
+            around a circle.
+
+        :param rad_per_s:       The angular velocity (in rad/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
         """
         return None
 
     def calculate_turn_velocity(self, rate: float) -> Optional[float]:
         """
-        TODO
+        Calculate the angular velocity (in rad/s) at which the specified rate (in [-1,1]) will turn the drone
+        right or left.
 
-        :param rate:    TODO
-        :return:        TODO
+        .. note::
+            In terms of signs, a rate of 1.0 means "turn right at maximum speed" and a rate of -1.0
+            means "turn left at maximum speed". The angular velocity will be -ve when turning right,
+            and +ve when turning left, as angles are usually measured anti-clockwise around a circle.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding angular velocity (in rad/s).
         """
         return None
 
     def calculate_up_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
-        TODO
+        Try to calculate a rate in [-1,1] that would move the drone up or down with the specified velocity (in m/s),
+        if one exists.
 
-        :param m_per_s:         TODO
-        :param allow_clipping:  TODO
-        :return:                TODO
+        .. note::
+            The specified velocity may not be achievable in practice, e.g. due to physical limitations of the drone.
+            This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the function
+            will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or return None
+            if it's set to False.
+        .. note::
+            In terms of signs, a +ve velocity means "move up" and a -ve velocity means "move down".
+            The calculated rate will be +ve when moving up and -ve when moving down.
+
+        :param m_per_s:         The velocity (in m/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
         """
         return None
 
     def calculate_up_velocity(self, rate: float) -> Optional[float]:
         """
-        TODO
+        Calculate the velocity (in m/s) at which the specified rate (in [-1,1]) will move the drone up or down.
 
-        :param rate:    TODO
-        :return:        TODO
+        .. note::
+            In terms of signs, a rate of 1.0 means "move up at maximum speed" and a rate of -1.0
+            means "move down at maximum speed". The velocity will be +ve when moving up and -ve
+            when moving down.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding velocity (in m/s).
         """
         return None
 
     def clip_forward_velocity(self, m_per_s: float) -> float:
         """
-        TODO
+        Clip the specified forward/backward velocity (in m/s) to one that is achievable by the drone.
 
-        :param m_per_s: TODO
-        :return:        TODO
+        :param m_per_s: The input velocity (in m/s).
+        :return:        The result of clipping the input velocity to one that is achievable by the drone.
         """
-        return self.calculate_forward_velocity(rate=self.calculate_forward_rate(m_per_s=m_per_s))
+        return self.calculate_forward_velocity(self.calculate_forward_rate(m_per_s))
 
     def clip_right_velocity(self, m_per_s: float) -> float:
         """
-        TODO
+        Clip the specified right/left velocity (in m/s) to one that is achievable by the drone.
 
-        :param m_per_s: TODO
-        :return:        TODO
+        :param m_per_s: The input velocity (in m/s).
+        :return:        The result of clipping the input velocity to one that is achievable by the drone.
         """
-        return self.calculate_right_velocity(rate=self.calculate_right_rate(m_per_s=m_per_s))
+        return self.calculate_right_velocity(self.calculate_right_rate(m_per_s))
 
     def clip_up_velocity(self, m_per_s: float) -> float:
         """
-        TODO
+        Clip the specified up/down velocity (in m/s) to one that is achievable by the drone.
 
-        :param m_per_s: TODO
-        :return:        TODO
+        :param m_per_s: The input velocity (in m/s).
+        :return:        The result of clipping the input velocity to one that is achievable by the drone.
         """
-        return self.calculate_up_velocity(rate=self.calculate_up_rate(m_per_s=m_per_s))
+        return self.calculate_up_velocity(self.calculate_up_rate(m_per_s))
 
     # noinspection PyMethodMayBeStatic
     def get_expected_takeoff_height(self) -> Optional[float]:
@@ -265,9 +333,10 @@ class Drone(ABC):
 
     def has_calibrated_rates(self) -> bool:
         """
-        TODO
+        Get whether or not this type of drone has had its rate <-> velocity conversion functions implemented yet.
 
-        :return:    TODO
+        :return:    True, if the rate <-> velocity conversion functions have been implemented for this type of drone,
+                    or False otherwise.
         """
         return self.calculate_forward_velocity(1.0) is not None \
             and self.calculate_right_velocity(1.0) is not None \
