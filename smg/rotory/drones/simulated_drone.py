@@ -5,6 +5,7 @@ import time
 import vg
 
 from collections import deque
+from timeit import default_timer as timer
 from typing import Callable, Deque, Optional, Tuple
 
 from smg.rigging.cameras import Camera, SimpleCamera
@@ -25,25 +26,24 @@ class SimulatedDrone(Drone):
     # A function that can be called iteratively to try to make the drone land. It returns the drone state after
     # each call. If the drone is still flying, the landing has failed. If the drone's landing, we need to continue
     # calling the function iteratively. If the drone has landed, we can stop.
-    LandingController = Callable[[SimpleCamera], Drone.EState]
+    LandingController = Callable[[SimpleCamera, float], Drone.EState]
 
     # A function that can be called iteratively to try to make the drone take off. It returns the drone state after
     # each call. If the drone is still on the ground, the takeoff has failed. If the drone's taking off, we need to
     # continue calling the function iteratively. If the drone is flying, we can stop.
-    TakeoffController = Callable[[SimpleCamera], Drone.EState]
+    TakeoffController = Callable[[SimpleCamera, float], Drone.EState]
 
     # CONSTRUCTOR
 
-    def __init__(self, *, angular_gain: float = 0.02, drone_origin: Optional[SimpleCamera] = None,
+    def __init__(self, *, drone_origin: Optional[SimpleCamera] = None,
                  image_renderer: Optional[ImageRenderer] = None, image_size: Tuple[int, int] = (640, 480),
-                 intrinsics: Tuple[float, float, float, float] = (500, 500, 320, 240), linear_gain: float = 0.02):
+                 intrinsics: Tuple[float, float, float, float] = (500, 500, 320, 240)):
         """
         Construct a simulated drone.
 
         .. note::
             If drone_origin is set to None, the initial origin for the drone will be the world-space origin.
 
-        :param angular_gain:    The amount by which to multiply the control inputs for angular drone movements.
         :param drone_origin:    The initial origin for the drone (optional).
         :param image_renderer:  An optional function that can be used to render a synthetic image of what the drone
                                 can see from the current pose of its camera.
@@ -51,16 +51,13 @@ class SimulatedDrone(Drone):
                                 (width, height) tuple.
         :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
                                 as an (fx, fy, cx, cy) tuple.
-        :param linear_gain:     The amount by which to multiply the control inputs for linear drone movements.
         """
-        self.__angular_gain: float = angular_gain
         self.__gimbal_input_history: Deque[float] = deque()
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer \
             if image_renderer is not None else SimulatedDrone.blank_image_renderer
         self.__image_size: Tuple[int, int] = image_size
         self.__intrinsics: Tuple[float, float, float, float] = intrinsics
         self.__landing_controller: Optional[SimulatedDrone.LandingController] = self.default_landing_controller
-        self.__linear_gain: float = linear_gain
         self.__should_terminate: threading.Event = threading.Event()
         self.__takeoff_controller: Optional[SimulatedDrone.TakeoffController] = self.default_takeoff_controller
 
@@ -95,17 +92,6 @@ class SimulatedDrone(Drone):
         """Destroy the drone object at the end of the with statement that's used to manage its lifetime."""
         self.terminate()
 
-    # PROPERTIES
-
-    @property
-    def linear_gain(self) -> float:
-        """
-        Get the amount by which control inputs will be multiplied for linear drone movements.
-
-        :return:    The amount by which control inputs will be multiplied for linear drone movements.
-        """
-        return self.__linear_gain
-
     # PUBLIC STATIC METHODS
 
     @staticmethod
@@ -128,11 +114,172 @@ class SimulatedDrone(Drone):
 
     # PUBLIC METHODS
 
-    def default_landing_controller(self, drone_cur: SimpleCamera) -> Drone.EState:
+    def calculate_forward_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        Try to calculate a rate in [-1,1] that would move the drone forward or backward with the specified
+        velocity (in m/s), if one exists.
+
+        .. note::
+            The specified velocity may not be achievable in practice, e.g. due to physical limitations of the drone.
+            This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the function
+            will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or return None
+            if it's set to False.
+        .. note::
+            In terms of signs, a +ve velocity means "move forward" and a -ve velocity means "move backward".
+            The calculated rate will be +ve when moving forward and -ve when moving backward.
+
+        :param m_per_s:         The velocity (in m/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
+        """
+        return SimulatedDrone.__calculate_rate(
+            units_per_s=m_per_s,
+            max_units_per_s=abs(self.calculate_forward_velocity(rate=1.0)),
+            allow_clipping=allow_clipping
+        )
+
+    def calculate_forward_velocity(self, rate: float) -> Optional[float]:
+        """
+        Calculate the velocity (in m/s) at which the specified rate (in [-1,1]) will move the drone forward
+        or backward.
+
+        .. note::
+            In terms of signs, a rate of 1.0 means "move forward at maximum speed" and a rate of -1.0
+            means "move backward at maximum speed". The velocity will be +ve when moving forward and
+            -ve when moving backward.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding velocity (in m/s).
+        """
+        return rate * 2.0
+
+    def calculate_right_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        Try to calculate a rate in [-1,1] that would move the drone right or left with the specified velocity (in m/s),
+        if one exists.
+
+        .. note::
+            The specified velocity may not be achievable in practice, e.g. due to physical limitations of the drone.
+            This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the function
+            will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or return None
+            if it's set to False.
+        .. note::
+            In terms of signs, a +ve velocity means "move right" and a -ve velocity means "move left".
+            The calculated rate will be +ve when moving right and -ve when moving left.
+
+        :param m_per_s:         The velocity (in m/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
+        """
+        return SimulatedDrone.__calculate_rate(
+            units_per_s=m_per_s,
+            max_units_per_s=abs(self.calculate_right_velocity(rate=1.0)),
+            allow_clipping=allow_clipping
+        )
+
+    def calculate_right_velocity(self, rate: float) -> Optional[float]:
+        """
+        Calculate the velocity (in m/s) at which the specified rate (in [-1,1]) will move the drone right or left.
+
+        .. note::
+            In terms of signs, a rate of 1.0 means "move right at maximum speed" and a rate of -1.0
+            means "move left at maximum speed". The velocity will be +ve when moving right and -ve
+            when moving left.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding velocity (in m/s).
+        """
+        return rate * 2.0
+
+    def calculate_turn_rate(self, rad_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        Try to calculate a rate in [-1,1] that would turn the drone right or left with the specified
+        angular velocity (in rad/s), if one exists.
+
+        .. note::
+            The specified angular velocity may not be achievable in practice, e.g. due to physical limitations of the
+            drone. This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the
+            function will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or
+            return None if it's set to False.
+        .. note::
+            In terms of signs, a +ve angular velocity means "turn left" and a -ve velocity means "turn right".
+            The calculated rate will be +ve when turning right and -ve when turning left. Note that we use
+            different signs for the velocities and the rates, as angles are usually measured anti-clockwise
+            around a circle.
+
+        :param rad_per_s:       The angular velocity (in rad/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
+        """
+        return SimulatedDrone.__calculate_rate(
+            units_per_s=rad_per_s,
+            max_units_per_s=abs(self.calculate_turn_velocity(rate=1.0)),
+            allow_clipping=allow_clipping
+        )
+
+    def calculate_turn_velocity(self, rate: float) -> Optional[float]:
+        """
+        Calculate the angular velocity (in rad/s) at which the specified rate (in [-1,1]) will turn the drone
+        right or left.
+
+        .. note::
+            In terms of signs, a rate of 1.0 means "turn right at maximum speed" and a rate of -1.0
+            means "turn left at maximum speed". The angular velocity will be -ve when turning right,
+            and +ve when turning left, as angles are usually measured anti-clockwise around a circle.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding angular velocity (in rad/s).
+        """
+        return -rate * np.pi / 2
+
+    def calculate_up_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
+        """
+        Try to calculate a rate in [-1,1] that would move the drone up or down with the specified velocity (in m/s),
+        if one exists.
+
+        .. note::
+            The specified velocity may not be achievable in practice, e.g. due to physical limitations of the drone.
+            This will typically result in a "raw" rate that is outside the [-1,1] range. If that happens, the function
+            will either clip the "raw" rate to one that is in range, if allow_clipping is set to True, or return None
+            if it's set to False.
+        .. note::
+            In terms of signs, a +ve velocity means "move up" and a -ve velocity means "move down".
+            The calculated rate will be +ve when moving up and -ve when moving down.
+
+        :param m_per_s:         The velocity (in m/s).
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
+                                it to the [-1,1] range if clipping is allowed, else None.
+        """
+        return SimulatedDrone.__calculate_rate(
+            units_per_s=m_per_s,
+            max_units_per_s=abs(self.calculate_up_velocity(rate=1.0)),
+            allow_clipping=allow_clipping
+        )
+
+    def calculate_up_velocity(self, rate: float) -> Optional[float]:
+        """
+        Calculate the velocity (in m/s) at which the specified rate (in [-1,1]) will move the drone up or down.
+
+        .. note::
+            In terms of signs, a rate of 1.0 means "move up at maximum speed" and a rate of -1.0
+            means "move down at maximum speed". The velocity will be +ve when moving up and -ve
+            when moving down.
+
+        :param rate:    The rate (in [-1,1]).
+        :return:        The corresponding velocity (in m/s).
+        """
+        return rate * 2.0
+
+    def default_landing_controller(self, drone_cur: SimpleCamera, time_offset: float) -> Drone.EState:
         """
         Run an iteration of the default landing controller.
 
         :param drone_cur:   A camera corresponding to the drone's current pose.
+        :param time_offset: The time offset (in s) since the last iteration of the simulation.
         :return:            The state of the drone after this iteration of the controller.
         """
         # Make a local copy of the drone's origin.
@@ -143,16 +290,19 @@ class SimulatedDrone(Drone):
         # Move the drone downwards at a constant rate until it's no higher than the drone's origin,
         # then switch to the idle state. (Note that y points downwards in our coordinate system!)
         if drone_cur.p()[1] < drone_origin.p()[1]:
-            drone_cur.move_v(-self.__linear_gain * 0.5)
+            target_velocity: float = -1.0
+            velocity: float = self.clip_up_velocity(target_velocity)
+            drone_cur.move_v(time_offset * velocity)
             return Drone.LANDING
         else:
             return Drone.IDLE
 
-    def default_takeoff_controller(self, drone_cur: SimpleCamera) -> Drone.EState:
+    def default_takeoff_controller(self, drone_cur: SimpleCamera, time_offset: float) -> Drone.EState:
         """
         Run an iteration of the default takeoff controller.
 
         :param drone_cur:   A camera corresponding to the drone's current pose.
+        :param time_offset: The time offset (in s) since the last iteration of the simulation.
         :return:            The state of the drone after this iteration of the controller.
         """
         # Make a local copy of the drone's origin.
@@ -163,7 +313,9 @@ class SimulatedDrone(Drone):
         # Move the drone upwards at a constant rate until it's at least 1m above the drone's origin,
         # then switch to the flying state. (Note that y points downwards in our coordinate system!)
         if drone_cur.p()[1] > drone_origin.p()[1] - 1.0:
-            drone_cur.move_v(self.__linear_gain * 0.5)
+            target_velocity: float = 1.0
+            velocity: float = self.clip_up_velocity(target_velocity)
+            drone_cur.move_v(time_offset * velocity)
             return Drone.TAKING_OFF
         else:
             return Drone.FLYING
@@ -368,6 +520,9 @@ class SimulatedDrone(Drone):
 
     def __process_simulation(self) -> None:
         """Run the simulation thread."""
+        # Initialise the previous time variable, which records the timestamp of the last iteration of the simulation.
+        previous_time: Optional[float] = None
+
         # Construct the camera corresponding to the master pose for the drone (the poses of its camera and chassis
         # will be derived from this each frame).
         master_cam: SimpleCamera = CameraUtil.make_default_camera()
@@ -385,6 +540,11 @@ class SimulatedDrone(Drone):
                 rc_yaw: float = self.__rc_yaw
                 state: Drone.EState = self.__state
 
+            # Try to calculate the time offset (in s) since the last iteration of the simulation.
+            current_time: float = timer()
+            time_offset: Optional[float] = current_time - previous_time if previous_time is not None else None
+            previous_time = current_time
+
             # If the drone's stationary on the ground and its origin has moved:
             if state == Drone.IDLE and self.__drone_origin_changed.is_set():
                 # Move the drone to its new origin.
@@ -392,27 +552,27 @@ class SimulatedDrone(Drone):
                 self.__drone_origin_changed.clear()
 
             # Provided the drone's not stationary on the ground, process any horizontal movements that are requested.
-            if state != Drone.IDLE:
-                master_cam.move_n(self.__linear_gain * rc_forward)
-                master_cam.move_u(-self.__linear_gain * rc_right)
-                master_cam.rotate(master_cam.v(), -self.__angular_gain * rc_yaw)
+            if state != Drone.IDLE and time_offset is not None:
+                master_cam.move_n(time_offset * self.calculate_forward_velocity(rate=rc_forward))
+                master_cam.move_u(-time_offset * self.calculate_right_velocity(rate=rc_right))
+                master_cam.rotate(master_cam.v(), time_offset * self.calculate_turn_velocity(rate=rc_yaw))
 
             # Depending on the drone's state:
             if state == Drone.TAKING_OFF:
                 # If the drone's taking off, then if a takeoff controller is active, run it; conversely, if no
                 # takeoff controller is active, cancel the takeoff.
-                if self.__takeoff_controller is not None:
-                    state = self.__takeoff_controller(master_cam)
+                if self.__takeoff_controller is not None and time_offset is not None:
+                    state = self.__takeoff_controller(master_cam, time_offset)
                 else:
                     state = Drone.IDLE
-            elif state == Drone.FLYING:
+            elif state == Drone.FLYING and time_offset is not None:
                 # If the drone's flying, process any vertical movements that are requested.
-                master_cam.move_v(self.__linear_gain * rc_up)
+                master_cam.move_v(time_offset * self.calculate_up_velocity(rate=rc_up))
             elif state == Drone.LANDING:
                 # If the drone's landing, then if a landing controller is active, run it; conversely, if no
                 # landing controller is active, cancel the landing.
-                if self.__landing_controller is not None:
-                    state = self.__landing_controller(master_cam)
+                if self.__landing_controller is not None and time_offset is not None:
+                    state = self.__landing_controller(master_cam, time_offset)
                 else:
                     state = Drone.FLYING
 
@@ -445,3 +605,35 @@ class SimulatedDrone(Drone):
 
             # Wait momentarily to avoid a spin loop before processing the next iteration of the simulation.
             time.sleep(0.01)
+
+    # PRIVATE STATIC METHODS
+
+    @staticmethod
+    def __calculate_rate(*, units_per_s: float, max_units_per_s: float, allow_clipping: bool) -> Optional[float]:
+        """
+        Try to calculate a rate in [-1,1] that would move/turn the drone at the specified velocity (in units/s).
+
+        .. note::
+            This function assumes that:
+            - We know the velocity corresponding to a rate of 1.0 (passed in as max_units_per_s).
+            - The drone responds linearly to rates between 0.0 and 1.0 (e.g. a rate of 0.5 yields a velocity of
+              max_units_per_s / 2).
+            - The drone responds analogously to negative rates.
+        .. note::
+            If the specified velocity is higher than the maximum, the "raw" rate calculated will be outside the
+            [-1,1] range. If that happens, the function will either clip the "raw" rate to one that is in range,
+            if allow_clipping is set to True, or return None if it's set to False.
+
+        :param units_per_s:     The target velocity (in units/s).
+        :param max_units_per_s: The velocity (in units/s) corresponding to a maximum rate of 1.0.
+        :param allow_clipping:  Whether to allow the "raw" rate to be clipped to the [-1,1] range.
+        :return:                The corresponding "raw" rate (in units/s), if it's in range, else the result of
+                                clipping it to the [-1,1] range if clipping is allowed, else None.
+        """
+        rate: float = units_per_s / max_units_per_s
+        if np.fabs(rate) <= 1.0:
+            return rate
+        elif allow_clipping:
+            return float(np.clip(rate, -1.0, 1.0))
+        else:
+            return None
