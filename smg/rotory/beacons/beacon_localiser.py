@@ -1,5 +1,7 @@
+import copy
 import math
 import numpy as np
+import random
 import scipy.optimize
 import threading
 import time
@@ -21,6 +23,7 @@ class BeaconLocaliser:
 
     def __init__(self):
         # TODO
+        self.__rng: random.Random = random.Random(12345)
         self.__should_terminate: threading.Event = threading.Event()
         self.__test_beacons: Dict[str, Beacon] = {}
 
@@ -65,8 +68,13 @@ class BeaconLocaliser:
             for beacon_name, beacon_range in beacon_ranges.items():
                 if len(self.__beacon_measurements[beacon_name]) == 0 \
                         or np.linalg.norm(receiver_pos - self.__beacon_measurements[beacon_name][-1][0]) > 0.01:
-                    self.__beacon_measurements[beacon_name].append((receiver_pos, beacon_range))
-                    self.__beacon_measurements[beacon_name] = self.__beacon_measurements[beacon_name][-50:]
+                    beacon_measurement: Tuple[np.ndarray, float] = (receiver_pos, beacon_range)
+                    if len(self.__beacon_measurements[beacon_name]) == 50:
+                        idx: int = self.__rng.randrange(0, len(self.__beacon_measurements[beacon_name]) - 1)
+                        self.__beacon_measurements[beacon_name][idx] = self.__beacon_measurements[beacon_name][-1]
+                        self.__beacon_measurements[beacon_name][-1] = beacon_measurement
+                    else:
+                        self.__beacon_measurements[beacon_name].append(beacon_measurement)
                     self.__dirty_beacons.add(beacon_name)
 
         # print(self.__beacon_measurements)
@@ -75,12 +83,12 @@ class BeaconLocaliser:
 
     def get_beacon_measurements(self) -> Dict[str, List[Tuple[np.ndarray, float]]]:
         with self.__lock:
-            return self.__beacon_measurements.copy()
+            return copy.deepcopy(self.__beacon_measurements)
 
     def get_beacons(self) -> Dict[str, Beacon]:
         # TODO
         with self.__lock:
-            return {**self.__localised_beacons.copy(), **self.get_test_beacons()}
+            return {**copy.deepcopy(self.__localised_beacons), **self.get_test_beacons()}
 
     def get_test_beacons(self) -> Dict[str, Beacon]:
         # TODO
@@ -116,7 +124,9 @@ class BeaconLocaliser:
         while not self.__should_terminate.is_set():
             # Make a copy of the shared variables so that we only need to hold the lock very briefly.
             with self.__lock:
-                beacon_measurements: Dict[str, List[Tuple[np.ndarray, float]]] = self.__beacon_measurements.copy()
+                beacon_measurements: Dict[str, List[Tuple[np.ndarray, float]]] = copy.deepcopy(
+                    self.__beacon_measurements
+                )
                 dirty_beacons: Set[str] = self.__dirty_beacons.copy()
                 self.__dirty_beacons.clear()
 
@@ -131,7 +141,7 @@ class BeaconLocaliser:
                     with self.__lock:
                         self.__localised_beacons[f"L_{beacon_name}"] = Beacon(beacon_pos, 1.0)
 
-                    # print(f"Beacon {beacon_name} localised at {beacon_pos}!", self.__test_beacons["Foo"].position)
+                    print(f"Beacon {beacon_name} localised at {beacon_pos}!", self.__test_beacons["Foo"].position)
 
             # Wait momentarily to avoid a spin loop.
             time.sleep(0.01)
