@@ -520,10 +520,12 @@ class SimulatedDrone(Drone):
 
     def __process_simulation(self) -> None:
         """Run the simulation thread."""
+        # Initialise the previous time variable, which records the timestamp of the last iteration of the simulation.
+        previous_time: Optional[float] = None
+
         # Construct the camera corresponding to the master pose for the drone (the poses of its camera and chassis
         # will be derived from this each frame).
         master_cam: SimpleCamera = CameraUtil.make_default_camera()
-        previous_time: Optional[float] = None
 
         # Until the simulation should terminate:
         while not self.__should_terminate.is_set():
