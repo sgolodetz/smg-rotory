@@ -301,7 +301,7 @@ class Drone(ABC):
         return self.calculate_up_velocity(self.calculate_up_rate(m_per_s))
 
     def get_beacon_ranges(self, *, drone_pos: Optional[np.ndarray] = None,
-                          known_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
+                          test_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
         """
         Get the estimated ranges (in m) between the drone and any beacons that are within range.
 
@@ -309,21 +309,10 @@ class Drone(ABC):
             The number of ranges returned may vary over time.
 
         :param drone_pos:       The current position of the drone (if available).
-        :param known_beacons:   TODO
+        :param test_beacons:    TODO
         :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
-        beacon_ranges: Dict[str, float] = {}
-
-        if known_beacons is None:
-            known_beacons = {}
-
-        if drone_pos is not None:
-            for beacon_name, beacon in known_beacons.items():
-                beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
-                if beacon_range <= beacon.max_range:
-                    beacon_ranges[beacon_name] = beacon_range
-
-        return beacon_ranges
+        return {}
 
     # noinspection PyMethodMayBeStatic
     def get_expected_takeoff_height(self) -> Optional[float]:

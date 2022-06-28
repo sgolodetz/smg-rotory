@@ -329,8 +329,8 @@ class SimulatedDrone(Drone):
         """
         return 100
 
-    def get_beacon_ranges(self, drone_pos: Optional[np.ndarray] = None, *,
-                          known_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
+    def get_beacon_ranges(self, *, drone_pos: Optional[np.ndarray] = None,
+                          test_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
         """
         Get the estimated ranges (in m) between the drone and any beacons that are within range.
 
@@ -338,16 +338,27 @@ class SimulatedDrone(Drone):
             The number of ranges returned may vary over time.
 
         :param drone_pos:       The current position of the drone (if available).
-        :param known_beacons:   TODO
+        :param test_beacons:    TODO
         :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
+        beacon_ranges: Dict[str, float] = {}
+
+        # TODO
+        if test_beacons is None:
+            test_beacons = {}
+
         # Since this is a simulated drone, we can automatically determine the drone's position if need be.
         if drone_pos is None:
             camera_w_t_c, _ = self.__get_poses()
             drone_pos = camera_w_t_c[0:3, 3]
 
-        # Forward the call to the super-class's method.
-        return super().get_beacon_ranges(drone_pos=drone_pos, known_beacons=known_beacons)
+        # TODO
+        for beacon_name, beacon in test_beacons.items():
+            beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
+            if beacon_range <= beacon.max_range:
+                beacon_ranges[beacon_name] = beacon_range
+
+        return beacon_ranges
 
     def get_image(self) -> np.ndarray:
         """
