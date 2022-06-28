@@ -27,12 +27,6 @@ class Drone(ABC):
     # The drone is in the process of performing an automated landing.
     LANDING: EState = EState(3)
 
-    # CONSTRUCTOR
-
-    def __init__(self):
-        """TODO"""
-        self.__localised_beacons: Dict[str, Beacon] = {}
-
     # PUBLIC ABSTRACT METHODS
 
     @abstractmethod
@@ -306,30 +300,28 @@ class Drone(ABC):
         """
         return self.calculate_up_velocity(self.calculate_up_rate(m_per_s))
 
-    def get_beacon_ranges(self, drone_pos: Optional[np.ndarray] = None, *, include_localised: bool = True,
-                          include_unlocalised: bool = True) -> Dict[str, float]:
+    def get_beacon_ranges(self, *, drone_pos: Optional[np.ndarray] = None,
+                          known_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
         """
         Get the estimated ranges (in m) between the drone and any beacons that are within range.
 
         .. note::
             The number of ranges returned may vary over time.
 
-        :param drone_pos:           The current position of the drone (if available).
-        :param include_localised:   TODO
-        :param include_unlocalised: TODO
-        :return:                    A dictionary that maps the names of the beacons to their estimated ranges (in m).
+        :param drone_pos:       The current position of the drone (if available).
+        :param known_beacons:   TODO
+        :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
         beacon_ranges: Dict[str, float] = {}
 
-        if include_localised and drone_pos is not None:
-            for beacon_name, beacon in self.__localised_beacons.items():
+        if known_beacons is None:
+            known_beacons = {}
+
+        if drone_pos is not None:
+            for beacon_name, beacon in known_beacons.items():
                 beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
                 if beacon_range <= beacon.max_range:
                     beacon_ranges[beacon_name] = beacon_range
-
-        if include_unlocalised:
-            # TODO: Unlocalised beacons.
-            pass
 
         return beacon_ranges
 
@@ -349,14 +341,6 @@ class Drone(ABC):
         :return:    The most recently received value of the drone's height (in m), if available, or None otherwise.
         """
         return None
-
-    def get_localised_beacons(self) -> Dict[str, Beacon]:
-        """
-        TODO
-
-        :return:    TODO
-        """
-        return self.__localised_beacons.copy()
 
     def get_state(self) -> Optional[EState]:
         """
@@ -385,18 +369,6 @@ class Drone(ABC):
             and self.calculate_right_velocity(1.0) is not None \
             and self.calculate_turn_velocity(1.0) is not None \
             and self.calculate_up_velocity(1.0) is not None
-
-    def set_localised_beacon(self, beacon_name: str, beacon: Optional[Beacon]) -> None:
-        """
-        TODO
-
-        :param beacon_name: TODO
-        :param beacon:      TODO
-        """
-        if beacon is not None:
-            self.__localised_beacons[beacon_name] = beacon
-        else:
-            del self.__localised_beacons[beacon_name]
 
     def update_gimbal_pitch(self, gimbal_pitch: float) -> None:
         """

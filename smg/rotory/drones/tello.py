@@ -48,8 +48,6 @@ class Tello(Drone):
         :param print_responses:             Whether or not to print command responses.
         :param print_state_messages:        Whether or not to print state messages.
         """
-        super().__init__()
-
         self.__dist_coeffs: Optional[np.ndarray] = dist_coeffs
         self.__frame_is_pending: bool = False
         self.__front_buffer: np.ndarray = np.zeros((720, 960, 3), dtype=np.uint8)
