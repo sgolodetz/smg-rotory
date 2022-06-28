@@ -46,3 +46,10 @@ class BeaconLocaliser:
         # TODO
         if beacon_name in self.__beacon_measurements:
             del self.__beacon_measurements[beacon_name]
+
+    # PUBLIC STATIC METHODS
+
+    @staticmethod
+    def try_localise_beacon(beacon_measurements: List[Tuple[np.ndarray, float]]) -> Optional[np.ndarray]:
+        # TODO
+        pass
