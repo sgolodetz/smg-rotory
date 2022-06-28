@@ -46,6 +46,7 @@ class BeaconLocaliser:
         result: scipy.optimize.optimize.OptimizeResult = scipy.optimize.minimize(
             BeaconLocaliser.__mean_square_error,
             np.zeros(3),
+            # beacon_measurements[0][0],
             args=beacon_measurements,
             method="L-BFGS-B",
             options={
@@ -63,7 +64,7 @@ class BeaconLocaliser:
         with self.__lock:
             for beacon_name, beacon_range in beacon_ranges.items():
                 if len(self.__beacon_measurements[beacon_name]) == 0 \
-                        or np.linalg.norm(receiver_pos - self.__beacon_measurements[beacon_name][-1][0]) > 0.05:
+                        or np.linalg.norm(receiver_pos - self.__beacon_measurements[beacon_name][-1][0]) > 0.01:
                     self.__beacon_measurements[beacon_name].append((receiver_pos, beacon_range))
                     self.__beacon_measurements[beacon_name] = self.__beacon_measurements[beacon_name][-50:]
                     self.__dirty_beacons.add(beacon_name)
@@ -72,10 +73,14 @@ class BeaconLocaliser:
         # if "Foo" in self.__beacon_measurements:
         #     print(len(self.__beacon_measurements["Foo"]))
 
+    def get_beacon_measurements(self) -> Dict[str, List[Tuple[np.ndarray, float]]]:
+        with self.__lock:
+            return self.__beacon_measurements.copy()
+
     def get_beacons(self) -> Dict[str, Beacon]:
         # TODO
         with self.__lock:
-            return {**self.__localised_beacons, **self.get_test_beacons()}
+            return {**self.__localised_beacons.copy(), **self.get_test_beacons()}
 
     def get_test_beacons(self) -> Dict[str, Beacon]:
         # TODO
