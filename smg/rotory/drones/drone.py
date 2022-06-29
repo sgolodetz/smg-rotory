@@ -301,7 +301,7 @@ class Drone(ABC):
         return self.calculate_up_velocity(self.calculate_up_rate(m_per_s))
 
     def get_beacon_ranges(self, drone_pos: np.ndarray, *,
-                          test_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
+                          fake_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
         """
         Get the estimated ranges (in m) between the drone and any beacons that are within range.
 
@@ -309,7 +309,7 @@ class Drone(ABC):
             The number of ranges returned may vary over time.
 
         :param drone_pos:       The current position of the drone.
-        :param test_beacons:    TODO
+        :param fake_beacons:    TODO
         :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
         return {}

@@ -23,9 +23,9 @@ class BeaconLocaliser:
 
     def __init__(self):
         # TODO
+        self.__fake_beacons: Dict[str, Beacon] = {}
         self.__rng: random.Random = random.Random(12345)
         self.__should_terminate: threading.Event = threading.Event()
-        self.__test_beacons: Dict[str, Beacon] = {}
 
         # TODO
         self.__beacon_measurements: Dict[str, List[Tuple[np.ndarray, float]]] = defaultdict(list)
@@ -88,18 +88,18 @@ class BeaconLocaliser:
     def get_beacons(self) -> Dict[str, Beacon]:
         # TODO
         with self.__lock:
-            return {**copy.deepcopy(self.__localised_beacons), **self.get_test_beacons()}
+            return {**copy.deepcopy(self.__localised_beacons), **self.get_fake_beacons()}
 
-    def get_test_beacons(self) -> Dict[str, Beacon]:
+    def get_fake_beacons(self) -> Dict[str, Beacon]:
         # TODO
-        return self.__test_beacons
+        return self.__fake_beacons
 
-    def set_test_beacon(self, beacon_name: str, beacon: Optional[Beacon]) -> None:
+    def set_fake_beacon(self, beacon_name: str, beacon: Optional[Beacon]) -> None:
         # TODO
         if beacon is not None:
-            self.__test_beacons[beacon_name] = beacon
-        elif beacon_name in self.__test_beacons:
-            del self.__test_beacons[beacon_name]
+            self.__fake_beacons[beacon_name] = beacon
+        elif beacon_name in self.__fake_beacons:
+            del self.__fake_beacons[beacon_name]
 
         # TODO
         with self.__lock:
@@ -141,7 +141,7 @@ class BeaconLocaliser:
                     with self.__lock:
                         self.__localised_beacons[f"L_{beacon_name}"] = Beacon(beacon_pos, 1.0)
 
-                    print(f"Beacon {beacon_name} localised at {beacon_pos}!", self.__test_beacons["Foo"].position)
+                    print(f"Beacon {beacon_name} localised at {beacon_pos}!", self.__fake_beacons["Foo"].position)
 
             # Wait momentarily to avoid a spin loop.
             time.sleep(0.01)

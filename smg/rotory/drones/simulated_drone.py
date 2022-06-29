@@ -330,7 +330,7 @@ class SimulatedDrone(Drone):
         return 100
 
     def get_beacon_ranges(self, drone_pos: np.ndarray, *,
-                          test_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
+                          fake_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
         """
         Get the estimated ranges (in m) between the drone and any beacons that are within range.
 
@@ -338,17 +338,17 @@ class SimulatedDrone(Drone):
             The number of ranges returned may vary over time.
 
         :param drone_pos:       The current position of the drone.
-        :param test_beacons:    TODO
+        :param fake_beacons:    TODO
         :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
         beacon_ranges: Dict[str, float] = {}
 
         # TODO
-        if test_beacons is None:
-            test_beacons = {}
+        if fake_beacons is None:
+            fake_beacons = {}
 
         # TODO
-        for beacon_name, beacon in test_beacons.items():
+        for beacon_name, beacon in fake_beacons.items():
             beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
             if beacon_range <= beacon.max_range:
                 beacon_ranges[beacon_name] = beacon_range
