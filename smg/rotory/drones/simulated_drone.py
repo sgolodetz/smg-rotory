@@ -36,7 +36,7 @@ class SimulatedDrone(Drone):
 
     # CONSTRUCTOR
 
-    def __init__(self, *, drone_origin: Optional[SimpleCamera] = None,
+    def __init__(self, *, beacon_range_std: float = 0.0, drone_origin: Optional[SimpleCamera] = None,
                  image_renderer: Optional[ImageRenderer] = None, image_size: Tuple[int, int] = (640, 480),
                  intrinsics: Tuple[float, float, float, float] = (500, 500, 320, 240)):
         """
@@ -45,14 +45,16 @@ class SimulatedDrone(Drone):
         .. note::
             If drone_origin is set to None, the initial origin for the drone will be the world-space origin.
 
-        :param drone_origin:    The initial origin for the drone (optional).
-        :param image_renderer:  An optional function that can be used to render a synthetic image of what the drone
-                                can see from the current pose of its camera.
-        :param image_size:      The size of the synthetic images that should be rendered for the drone, as a
-                                (width, height) tuple.
-        :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
-                                as an (fx, fy, cx, cy) tuple.
+        :param beacon_range_std:    TODO
+        :param drone_origin:        The initial origin for the drone (optional).
+        :param image_renderer:      An optional function that can be used to render a synthetic image of what the
+                                    drone can see from the current pose of its camera.
+        :param image_size:          The size of the synthetic images that should be rendered for the drone, as a
+                                    (width, height) tuple.
+        :param intrinsics:          The camera intrinsics to use when rendering the synthetic images for the drone,
+                                    as an (fx, fy, cx, cy) tuple.
         """
+        self.__beacon_range_std: float = beacon_range_std
         self.__gimbal_input_history: Deque[float] = deque()
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer \
             if image_renderer is not None else SimulatedDrone.blank_image_renderer
@@ -351,7 +353,7 @@ class SimulatedDrone(Drone):
         for beacon_name, beacon in fake_beacons.items():
             beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
             if beacon_range <= beacon.max_range:
-                beacon_ranges[beacon_name] = beacon_range
+                beacon_ranges[beacon_name] = beacon_range + np.random.normal(0.0, self.__beacon_range_std)
 
         return beacon_ranges
 
