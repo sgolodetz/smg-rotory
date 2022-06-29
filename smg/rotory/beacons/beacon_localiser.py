@@ -1,6 +1,7 @@
 import copy
 import math
 import numpy as np
+import operator
 import random
 import scipy.optimize
 import threading
@@ -139,7 +140,10 @@ class BeaconLocaliser:
 
                 if beacon_pos is not None:
                     with self.__lock:
-                        self.__localised_beacons[f"L_{beacon_name}"] = Beacon(beacon_pos, 1.0)
+                        max_range: float = max(measurements_for_beacon, key=operator.itemgetter(1))[1]
+                        self.__localised_beacons[f"L_{beacon_name}"] = Beacon(
+                            beacon_pos, max_range, Beacon.BT_LOCALISED
+                        )
 
                     print(f"Beacon {beacon_name} localised at {beacon_pos}!", self.__fake_beacons["Foo"].position)
 
