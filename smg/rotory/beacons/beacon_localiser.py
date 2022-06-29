@@ -15,7 +15,7 @@ from .beacon import Beacon
 
 class BeaconLocaliser:
     """
-    TODO
+    Used to localise beacons based on measurements of the ranges to them from different positions.
 
     See also: https://www.alanzucconi.com/2017/03/13/positioning-and-trilateration/
     """
@@ -23,6 +23,7 @@ class BeaconLocaliser:
     # CONSTRUCTOR
 
     def __init__(self):
+        """Construct a beacon localiser."""
         # TODO
         self.__fake_beacons: Dict[str, Beacon] = {}
         self.__rng: random.Random = random.Random(12345)
@@ -41,8 +42,15 @@ class BeaconLocaliser:
     # PUBLIC STATIC METHODS
 
     @staticmethod
-    def try_localise_beacon(beacon_measurements: List[Tuple[np.ndarray, float]], *, min_needed: int = 3) \
-            -> Optional[np.ndarray]:
+    def try_localise_beacon(beacon_measurements: List[Tuple[np.ndarray, float]], *,
+                            min_needed: int = 3) -> Optional[np.ndarray]:
+        """
+        TODO
+
+        :param beacon_measurements: TODO
+        :param min_needed:          TODO
+        :return:                    TODO
+        """
         # TODO
         if len(beacon_measurements) < min_needed:
             return None
@@ -64,6 +72,12 @@ class BeaconLocaliser:
     # PUBLIC METHODS
 
     def add_beacon_measurements(self, receiver_pos: np.ndarray, beacon_ranges: Dict[str, float]) -> None:
+        """
+        TODO
+
+        :param receiver_pos:    TODO
+        :param beacon_ranges:   TODO
+        """
         # TODO
         with self.__lock:
             for beacon_name, beacon_range in beacon_ranges.items():
@@ -83,19 +97,40 @@ class BeaconLocaliser:
         #     print(len(self.__beacon_measurements["Foo"]))
 
     def get_beacon_measurements(self) -> Dict[str, List[Tuple[np.ndarray, float]]]:
+        """
+        TODO
+
+        :return:    TODO
+        """
         with self.__lock:
             return copy.deepcopy(self.__beacon_measurements)
 
     def get_beacons(self) -> Dict[str, Beacon]:
+        """
+        TODO
+
+        :return:    TODO
+        """
         # TODO
         with self.__lock:
             return {**copy.deepcopy(self.__localised_beacons), **self.get_fake_beacons()}
 
     def get_fake_beacons(self) -> Dict[str, Beacon]:
+        """
+        TODO
+
+        :return:    TODO
+        """
         # TODO
         return self.__fake_beacons
 
     def set_fake_beacon(self, beacon_name: str, beacon: Optional[Beacon]) -> None:
+        """
+        TODO
+
+        :param beacon_name: TODO
+        :param beacon:      TODO
+        """
         # TODO
         if beacon is not None:
             self.__fake_beacons[beacon_name] = beacon
@@ -111,6 +146,7 @@ class BeaconLocaliser:
                 del self.__localised_beacons[f"L_{beacon_name}"]
 
     def terminate(self) -> None:
+        """TODO"""
         # TODO
         if not self.__should_terminate.is_set():
             self.__should_terminate.set()
@@ -121,6 +157,7 @@ class BeaconLocaliser:
     # PRIVATE METHODS
 
     def __run_localisation(self) -> None:
+        """TODO"""
         # TODO
         while not self.__should_terminate.is_set():
             # Make a copy of the shared variables so that we only need to hold the lock very briefly.
@@ -154,6 +191,13 @@ class BeaconLocaliser:
 
     @staticmethod
     def __mean_square_error(beacon_pos: np.ndarray, beacon_measurements: List[Tuple[np.ndarray, float]]) -> float:
+        """
+        TODO
+
+        :param beacon_pos:          TODO
+        :param beacon_measurements: TODO
+        :return:                    TODO
+        """
         # TODO
         mse: float = 0.0
         for receiver_pos, measured_distance in beacon_measurements:

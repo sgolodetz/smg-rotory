@@ -2,7 +2,7 @@ import numpy as np
 
 
 class Beacon:
-    """TODO"""
+    """A beacon (a transmitter that can provide range measurements for use in localisation)."""
 
     # NESTED TYPES
 
@@ -10,20 +10,21 @@ class Beacon:
         """The different types of beacon that are possible."""
         pass
 
-    # TODO
+    # A fake beacon with a known position, manually placed in the scene by the user.
     BT_FAKE = EBeaconType(0)
-    # TODO
+    # A localised beacon (one whose position has been estimated based on range measurements).
     BT_LOCALISED = EBeaconType(1)
 
     # CONSTRUCTOR
 
     def __init__(self, position: np.ndarray, max_range: float, beacon_type: EBeaconType):
         """
-        TODO
+        Construct a beacon.
 
-        :param position:    TODO
-        :param max_range:   TODO
-        :param beacon_type: TODO
+        :param position:    The position of the beacon.
+        :param max_range:   The maximum range of the beacon (in m). This is the maximum distance at which it is able
+                            to provide range measurements.
+        :param beacon_type: The type of the beacon.
         """
         self.__beacon_type: Beacon.EBeaconType = beacon_type
         self.__max_range: float = max_range
@@ -34,26 +35,29 @@ class Beacon:
     @property
     def beacon_type(self) -> EBeaconType:
         """
-        TODO
+        Get the type of the beacon.
 
-        :return:    TODO
+        :return:    The type of the beacon.
         """
         return self.__beacon_type
 
     @property
     def max_range(self) -> float:
         """
-        TODO
+        Get the maximum range of the beacon (in m).
 
-        :return:    TODO
+        .. note::
+            This is the maximum distance at which it is able to provide range measurements.
+
+        :return:    The maximum range of the beacon (in m).
         """
         return self.__max_range
 
     @property
     def position(self) -> np.ndarray:
         """
-        TODO
+        Get the position of the beacon.
 
-        :return:    TODO
+        :return:    The position of the beacon.
         """
         return self.__position
