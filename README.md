@@ -1,5 +1,7 @@
 # smg-rotory
 
+![teaser](teaser.png)
+
 This Python package provides interfaces for controlling various drones.
 
 It is a submodule of [smglib](https://github.com/sgolodetz/smglib), the open-source Python framework associated with our drone research in the [Cyber-Physical Systems](https://www.cs.ox.ac.uk/activities/cyberphysical/) group at the University of Oxford.
