@@ -73,28 +73,48 @@ class BeaconLocaliser:
 
     def add_beacon_measurements(self, receiver_pos: np.ndarray, beacon_ranges: Dict[str, float]) -> None:
         """
-        TODO
+        Add to the localiser some measurements of the ranges to different beacons from the specified receiver position.
 
-        :param receiver_pos:    TODO
-        :param beacon_ranges:   TODO
+        .. note::
+            The idea is that the beacons are transmitters, and that at each time step, the receiver picks up a signal
+            from each beacon that can be used to estimate its range. We can thus accumulate multiple measurements for
+            each beacon over time, from different receiver positions. In practice, we limit the number of measurements
+            that we retain for each beacon to keep the localisation problem we plan to solve tractable (and to avoid
+            unbounded memory usage).
+
+        :param receiver_pos:    The position of the receiver.
+        :param beacon_ranges:   A dictionary that maps the names of the beacons to their measured ranges (in m).
         """
-        # TODO
         with self.__lock:
+            # For each beacon for which a measured range is available:
             for beacon_name, beacon_range in beacon_ranges.items():
+                # If either (i) there are no existing measurements for the beacon, or (ii) the receiver has moved
+                # at least a short distance since the most recent measurement for the beacon:
+                # FIXME: Avoid hard-coding the threshold.
                 if len(self.__beacon_measurements[beacon_name]) == 0 \
                         or np.linalg.norm(receiver_pos - self.__beacon_measurements[beacon_name][-1][0]) > 0.01:
+                    # Construct the new measurement.
                     beacon_measurement: Tuple[np.ndarray, float] = (receiver_pos, beacon_range)
+
+                    # If we already have the maximum number of measurements we want to retain for this beacon:
+                    # FIXME: Avoid hard-coding the maximum number of measurements to retain.
                     if len(self.__beacon_measurements[beacon_name]) == 50:
+                        # Randomly pick an existing measurement to discard.
                         idx: int = self.__rng.randrange(0, len(self.__beacon_measurements[beacon_name]) - 1)
+
+                        # Overwrite the chosen measurement with the most recent measurement.
                         self.__beacon_measurements[beacon_name][idx] = self.__beacon_measurements[beacon_name][-1]
+
+                        # Overwrite the most recent measurement with the new measurement.
                         self.__beacon_measurements[beacon_name][-1] = beacon_measurement
+
+                    # Otherwise, simply add the new measurement to the list.
                     else:
                         self.__beacon_measurements[beacon_name].append(beacon_measurement)
-                    self.__dirty_beacons.add(beacon_name)
 
-        # print(self.__beacon_measurements)
-        # if "Foo" in self.__beacon_measurements:
-        #     print(len(self.__beacon_measurements["Foo"]))
+                    # Mark the beacon as one for which new measurements have been added since localisation was
+                    # last run. This will cause localisation to be re-run for the beacon when there's time.
+                    self.__dirty_beacons.add(beacon_name)
 
     def get_beacon_measurements(self) -> Dict[str, List[Tuple[np.ndarray, float]]]:
         """
