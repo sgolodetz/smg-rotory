@@ -45,7 +45,8 @@ class SimulatedDrone(Drone):
         .. note::
             If drone_origin is set to None, the initial origin for the drone will be the world-space origin.
 
-        :param beacon_range_std:    TODO
+        :param beacon_range_std:    The standard deviation of the zero-mean Gaussian noise to add when getting the
+                                    ranges of the fake beacons.
         :param drone_origin:        The initial origin for the drone (optional).
         :param image_renderer:      An optional function that can be used to render a synthetic image of what the
                                     drone can see from the current pose of its camera.
@@ -340,18 +341,23 @@ class SimulatedDrone(Drone):
             The number of ranges returned may vary over time.
 
         :param drone_pos:       The current position of the drone.
-        :param fake_beacons:    TODO
+        :param fake_beacons:    An optional dictionary of fake beacons with known positions, manually placed in the
+                                scene by the user. Defaults to an empty dictionary if not specified.
         :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
         beacon_ranges: Dict[str, float] = {}
 
-        # TODO
+        # If no fake beacons were passed in, use an empty dictionary as the default.
         if fake_beacons is None:
             fake_beacons = {}
 
-        # TODO
+        # For each fake beacon that was passed in:
         for beacon_name, beacon in fake_beacons.items():
+            # Calculate the (true) range between the beacon and the drone.
             beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
+
+            # If it's less than the maximum range of the beacon, first add some zero-mean Gaussian noise to the range
+            # to simulate what would happen in the real world, and then add the range to the output dictionary.
             if beacon_range <= beacon.max_range:
                 beacon_ranges[beacon_name] = beacon_range + np.random.normal(0.0, self.__beacon_range_std)
 
