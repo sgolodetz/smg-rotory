@@ -21,7 +21,10 @@ class SimulatedDrone(Drone):
 
     # A function that takes the drone's camera and chassis poses (in that order), an image size and some intrinsics,
     # and renders an image.
-    ImageRenderer = Callable[[np.ndarray, np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
+    ImageRenderer = Callable[
+        [np.ndarray, np.ndarray, Tuple[int, int], Tuple[float, float, float, float]],
+        Tuple[np.ndarray, np.ndarray]
+    ]
 
     # A function that can be called iteratively to try to make the drone land. It returns the drone state after
     # each call. If the drone is still flying, the landing has failed. If the drone's landing, we need to continue
@@ -337,7 +340,7 @@ class SimulatedDrone(Drone):
         camera_w_t_c, chassis_w_t_c = self.__get_poses()
         return self.__image_renderer(camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics)
 
-    def get_image_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def get_image_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
         Get the most recent image received from the drone, together with the poses of the drone's camera and chassis.
 
@@ -346,12 +349,13 @@ class SimulatedDrone(Drone):
             in the air and thereby make the simulation look a bit more realistic.
 
         :return:    The most recent image received from the drone, together with the poses of the drone's camera
-                    and chassis, as an (image, camera pose, chassis pose) tuple.
+                    and chassis, as a (colour image, depth image, camera pose, chassis pose) tuple.
         """
         camera_w_t_c, chassis_w_t_c = self.__get_poses()
-        return self.__image_renderer(
+        colour_image, depth_image = self.__image_renderer(
             camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics
-        ), camera_w_t_c, chassis_w_t_c
+        )
+        return colour_image, depth_image, camera_w_t_c, chassis_w_t_c
 
     def get_image_size(self) -> Tuple[int, int]:
         """
