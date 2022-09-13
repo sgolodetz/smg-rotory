@@ -114,6 +114,14 @@ class Tello(Drone):
 
     # PUBLIC METHODS
 
+    def activate_motors(self) -> None:
+        """Activate the drone's motors."""
+        self.__send_command("motoron", expect_response=True)
+
+    def deactivate_motors(self) -> None:
+        """Deactivate the drone's motors."""
+        self.__send_command("motoroff", expect_response=True)
+
     def get_battery_level(self) -> Optional[int]:
         """
         Try to get the most recently received value of the remaining battery %.
@@ -237,6 +245,10 @@ class Tello(Drone):
         :param rate:    The rate at which the drone should move up (in [-1,1]).
         """
         self.__rc_up = Tello.__rate_to_control_value(rate)
+
+    def send_custom_command(self, cmd: str) -> None:
+        """Send a custom command to the drone."""
+        self.__send_command(cmd, expect_response=True)
 
     def stop(self) -> None:
         """Tell the drone to stop in mid-air."""

@@ -28,6 +28,16 @@ class Drone(ABC):
     # PUBLIC ABSTRACT METHODS
 
     @abstractmethod
+    def activate_motors(self) -> None:
+        """Activate the drone's motors (if supported)."""
+        pass
+
+    @abstractmethod
+    def deactivate_motors(self) -> None:
+        """Deactivate the drone's motors (if supported)."""
+        pass
+
+    @abstractmethod
     def get_battery_level(self) -> Optional[int]:
         """
         Try to get the most recently received value of the remaining battery %.
@@ -99,6 +109,11 @@ class Drone(ABC):
 
         :param rate:    The rate at which the drone should move up (in [-1,1]).
         """
+        pass
+
+    @abstractmethod
+    def send_custom_command(self, cmd: str) -> None:
+        """Send a custom command to the drone (if supported)."""
         pass
 
     @abstractmethod
