@@ -338,7 +338,8 @@ class SimulatedDrone(Drone):
         :return:    The most recent image received from the drone.
         """
         camera_w_t_c, chassis_w_t_c = self.__get_poses()
-        return self.__image_renderer(camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics)
+        image, _ = self.__image_renderer(camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics)
+        return image
 
     def get_image_size(self) -> Tuple[int, int]:
         """
