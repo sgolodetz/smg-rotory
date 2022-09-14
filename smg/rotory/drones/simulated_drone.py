@@ -340,16 +340,17 @@ class SimulatedDrone(Drone):
         camera_w_t_c, chassis_w_t_c = self.__get_poses()
         return self.__image_renderer(camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics)
 
-    def get_image_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    def get_images_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
         """
-        Get the most recent image received from the drone, together with the poses of the drone's camera and chassis.
+        Get the most recent images (colour and depth) received from the drone, together with the poses of the drone's
+        camera and chassis.
 
         .. note::
             In our simulation, the drone's camera and chassis have separate poses to allow the drone to wobble around
             in the air and thereby make the simulation look a bit more realistic.
 
-        :return:    The most recent image received from the drone, together with the poses of the drone's camera
-                    and chassis, as a (colour image, depth image, camera pose, chassis pose) tuple.
+        :return:    The most recent images (colour and depth) received from the drone, together with the poses of the
+                    drone's camera and chassis, as a (colour image, depth image, camera pose, chassis pose) tuple.
         """
         camera_w_t_c, chassis_w_t_c = self.__get_poses()
         colour_image, depth_image = self.__image_renderer(
