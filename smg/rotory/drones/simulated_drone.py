@@ -360,7 +360,7 @@ class SimulatedDrone(Drone):
         """
         Get the poses of the drone's camera and chassis.
 
-        :return:    The poses of the drone's camera and chassis, as a (camera pose, chassis pose) tuple.
+        :return:    The poses of the drone's camera and chassis, as a (camera pose, chassis pose) pair.
         """
         with self.__output_lock:
             return self.__camera_w_t_c.copy(), self.__chassis_w_t_c.copy()
