@@ -20,7 +20,7 @@ class SimulatedDrone(Drone):
     # TYPE ALIASES
 
     # A function that takes the drone's camera and chassis poses (in that order), an image size and some intrinsics,
-    # and renders an image.
+    # and renders an RGB-D image as a (colour image, depth image) pair.
     ImageRenderer = Callable[
         [np.ndarray, np.ndarray, Tuple[int, int], Tuple[float, float, float, float]],
         Tuple[np.ndarray, np.ndarray]
@@ -366,7 +366,11 @@ class SimulatedDrone(Drone):
             return self.__camera_w_t_c.copy(), self.__chassis_w_t_c.copy()
 
     def get_rgbd_image(self) -> Tuple[np.ndarray, np.ndarray]:
-        """TODO"""
+        """
+        Render a synthetic RGB-D image showing what can be seen from the drone's camera.
+
+        :return:    The RGB-D image, as a (colour image, depth image) pair.
+        """
         camera_w_t_c, chassis_w_t_c = self.get_poses()
         return self.__image_renderer(
             camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics
