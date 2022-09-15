@@ -20,8 +20,11 @@ class SimulatedDrone(Drone):
     # TYPE ALIASES
 
     # A function that takes the drone's camera and chassis poses (in that order), an image size and some intrinsics,
-    # and renders an image.
-    ImageRenderer = Callable[[np.ndarray, np.ndarray, Tuple[int, int], Tuple[float, float, float, float]], np.ndarray]
+    # and renders an RGB-D image as a (colour image, depth image) pair.
+    ImageRenderer = Callable[
+        [np.ndarray, np.ndarray, Tuple[int, int], Tuple[float, float, float, float]],
+        Tuple[np.ndarray, np.ndarray]
+    ]
 
     # A function that can be called iteratively to try to make the drone land. It returns the drone state after
     # each call. If the drone is still flying, the landing has failed. If the drone's landing, we need to continue
@@ -334,24 +337,8 @@ class SimulatedDrone(Drone):
 
         :return:    The most recent image received from the drone.
         """
-        camera_w_t_c, chassis_w_t_c = self.__get_poses()
-        return self.__image_renderer(camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics)
-
-    def get_image_and_poses(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """
-        Get the most recent image received from the drone, together with the poses of the drone's camera and chassis.
-
-        .. note::
-            In our simulation, the drone's camera and chassis have separate poses to allow the drone to wobble around
-            in the air and thereby make the simulation look a bit more realistic.
-
-        :return:    The most recent image received from the drone, together with the poses of the drone's camera
-                    and chassis, as an (image, camera pose, chassis pose) tuple.
-        """
-        camera_w_t_c, chassis_w_t_c = self.__get_poses()
-        return self.__image_renderer(
-            camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics
-        ), camera_w_t_c, chassis_w_t_c
+        colour_image, _ = self.get_rgbd_image()
+        return colour_image
 
     def get_image_size(self) -> Tuple[int, int]:
         """
@@ -368,6 +355,26 @@ class SimulatedDrone(Drone):
         :return:    The camera intrinsics as an (fx, fy, cx, cy) tuple.
         """
         return self.__intrinsics
+
+    def get_poses(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Get the poses of the drone's camera and chassis.
+
+        :return:    The poses of the drone's camera and chassis, as a (camera pose, chassis pose) pair.
+        """
+        with self.__output_lock:
+            return self.__camera_w_t_c.copy(), self.__chassis_w_t_c.copy()
+
+    def get_rgbd_image(self) -> Tuple[np.ndarray, np.ndarray]:
+        """
+        Render a synthetic RGB-D image showing what can be seen from the drone's camera.
+
+        :return:    The RGB-D image, as a (colour image, depth image) pair.
+        """
+        camera_w_t_c, chassis_w_t_c = self.get_poses()
+        return self.__image_renderer(
+            camera_w_t_c, chassis_w_t_c, self.__image_size, self.__intrinsics
+        )
 
     def get_state(self) -> Optional[Drone.EState]:
         """
@@ -508,15 +515,6 @@ class SimulatedDrone(Drone):
             self.__gimbal_pitch = gimbal_pitch
 
     # PRIVATE METHODS
-
-    def __get_poses(self) -> Tuple[np.ndarray, np.ndarray]:
-        """
-        Get the poses of the drone's camera and chassis.
-
-        :return:    The poses of the drone's camera and chassis, as a (camera pose, chassis pose) tuple.
-        """
-        with self.__output_lock:
-            return self.__camera_w_t_c.copy(), self.__chassis_w_t_c.copy()
 
     def __process_simulation(self) -> None:
         """Run the simulation thread."""
