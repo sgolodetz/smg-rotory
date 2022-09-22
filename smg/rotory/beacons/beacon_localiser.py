@@ -226,7 +226,9 @@ class BeaconLocaliser:
 
                     # Optionally output some debugging information.
                     if self.__debug:
-                        print(f"Beacon {beacon_name} localised at {beacon_pos}!", self.__fake_beacons["Foo"].position)
+                        fake_beacon: Optional[Beacon] = self.__fake_beacons.get(beacon_name)
+                        gt_beacon_pos: Optional[np.ndarray] = fake_beacon.position if fake_beacon is not None else None
+                        print(f"Beacon '{beacon_name}' localised at: {beacon_pos}; ground-truth: {gt_beacon_pos}")
 
             # Wait momentarily to avoid a spin loop.
             time.sleep(0.01)
