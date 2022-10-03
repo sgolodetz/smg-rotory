@@ -1,7 +1,9 @@
 import numpy as np
 
 from abc import ABC, abstractmethod
-from typing import Optional, Tuple
+from typing import Dict, Optional, Tuple
+
+from ..beacons import Beacon
 
 
 class Drone(ABC):
@@ -297,6 +299,21 @@ class Drone(ABC):
         :return:        The result of clipping the input velocity to one that is achievable by the drone.
         """
         return self.calculate_up_velocity(self.calculate_up_rate(m_per_s))
+
+    def get_beacon_ranges(self, drone_pos: np.ndarray, *,
+                          fake_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
+        """
+        Get the estimated ranges (in m) between the drone and any beacons that are within range.
+
+        .. note::
+            The number of ranges returned may vary over time.
+
+        :param drone_pos:       The current position of the drone.
+        :param fake_beacons:    An optional dictionary of fake beacons with known positions, manually placed in the
+                                scene by the user. Treated as an empty dictionary if not specified.
+        :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
+        """
+        return {}
 
     # noinspection PyMethodMayBeStatic
     def get_expected_takeoff_height(self) -> Optional[float]:
