@@ -11,8 +11,8 @@ from typing import Callable, Deque, Dict, Optional, Tuple
 from smg.rigging.cameras import Camera, SimpleCamera
 from smg.rigging.helpers import CameraPoseConverter, CameraUtil
 
-from ..beacons import Beacon
 from .drone import Drone
+from ..beacons import Beacon
 
 
 class SimulatedDrone(Drone):

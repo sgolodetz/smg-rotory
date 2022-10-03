@@ -3,7 +3,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from typing import Dict, Optional, Tuple
 
-from smg.rotory.beacons import Beacon
+from ..beacons import Beacon
 
 
 class Drone(ABC):
