@@ -5,6 +5,7 @@ import socket
 import threading
 import time
 
+from timeit import default_timer as timer
 from typing import Dict, Mapping, Optional, Tuple
 
 from .drone import Drone
@@ -55,6 +56,8 @@ class Tello(Drone):
         self.__height_offset: int = height_offset
         self.__image_timestamp: Optional[float] = None
         self.__intrinsics: Optional[Tuple[float, float, float, float]] = intrinsics
+        self.__last_motor_time: Optional[int] = None
+        self.__last_motor_time_changed: Optional[float] = None
         self.__print_commands: bool = print_commands
         self.__print_responses: bool = print_responses
         self.__print_state_messages: bool = print_state_messages
@@ -64,6 +67,7 @@ class Tello(Drone):
         self.__rc_yaw = 0
         self.__response_is_pending: bool = False
         self.__should_terminate: bool = False
+        self.__state: Drone.EState = Drone.IDLE
         self.__state_map: dict = {}
 
         # If the user didn't manually specify any camera parameters, use the defaults if allowed.
@@ -172,6 +176,25 @@ class Tello(Drone):
         """
         return self.__intrinsics
 
+    def get_motor_time(self) -> Optional[int]:
+        """
+        Try to get the amount of time for which the drone's motors have been used (in s).
+
+        :return:    The most recently received value of the drone's motor time (in s), if available, or None otherwise.
+        """
+        with self.__state_lock:
+            motor_time: Optional[str] = self.__state_map.get("time")
+            return int(motor_time) if motor_time is not None else None
+
+    def get_state(self) -> Optional[Drone.EState]:
+        """
+        Try to get the current state of the drone.
+
+        :return:    The current state of the drone, if known, or None otherwise.
+        """
+        with self.__state_lock:
+            return self.__state
+
     def get_state_map(self) -> Dict[str, str]:
         """
         Get the most recent state map received from the drone.
@@ -212,6 +235,8 @@ class Tello(Drone):
     def land(self) -> None:
         """Tell the drone to land."""
         self.__send_command("land", expect_response=True)
+        with self.__state_lock:
+            self.__state = Drone.LANDING
 
     def move_forward(self, rate: float) -> None:
         """
@@ -260,6 +285,8 @@ class Tello(Drone):
     def takeoff(self) -> None:
         """Tell the drone to take off."""
         self.__send_command("takeoff", expect_response=True)
+        with self.__state_lock:
+            self.__state = Drone.FLYING
 
     def terminate(self) -> None:
         """Tell the drone to terminate."""
@@ -287,6 +314,25 @@ class Tello(Drone):
         self.__rc_yaw = Tello.__rate_to_control_value(rate)
 
     # PRIVATE METHODS
+
+    def __check_if_landed(self) -> None:
+        """Check whether the drone has just completed a landing, and update its state as needed."""
+        # Get the amount of time for which the drone's motors have been used.
+        motor_time: Optional[int] = self.get_motor_time()
+
+        # If the motors have been used since we last got here (or this is the first time we got here):
+        if self.__last_motor_time is None or motor_time != self.__last_motor_time:
+            # Update our record of the last motor time and when it was last updated accordingly.
+            self.__last_motor_time = motor_time
+            self.__last_motor_time_changed = timer()
+
+        # Otherwise:
+        else:
+            with self.__state_lock:
+                # If the drone was previously landing, and the motors have now been idle for at least 1s:
+                if self.__state == Drone.LANDING and timer() - self.__last_motor_time_changed >= 1.0:
+                    # The drone has successfully landed, so set its state to idle.
+                    self.__state = Drone.IDLE
 
     def __process_command_responses(self) -> None:
         """Process command responses sent by the drone."""
@@ -340,8 +386,8 @@ class Tello(Drone):
         """Process state messages sent by the drone."""
         # While the drone should not terminate:
         while not self.__should_terminate:
-            # Sleep for 100 milliseconds.
-            time.sleep(0.1)
+            # Sleep for 10 milliseconds.
+            time.sleep(0.01)
 
             # Attempt to receive a state message from the drone.
             try:
@@ -366,8 +412,12 @@ class Tello(Drone):
                 chunks: Mapping = [s.split(":") for s in state_message.decode("UTF-8").split(";")[:-1]]
 
                 # Update the internal state map based on the chunks.
+                state_map = dict(chunks)
                 with self.__state_lock:
-                    self.__state_map = dict(chunks)
+                    self.__state_map = state_map
+
+                # Check whether the drone has just completed a landing, and update its state as needed.
+                self.__check_if_landed()
 
     # noinspection PyUnresolvedReferences
     def __process_video_messages(self) -> None:

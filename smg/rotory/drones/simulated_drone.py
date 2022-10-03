@@ -6,12 +6,13 @@ import vg
 
 from collections import deque
 from timeit import default_timer as timer
-from typing import Callable, Deque, Optional, Tuple
+from typing import Callable, Deque, Dict, Optional, Tuple
 
 from smg.rigging.cameras import Camera, SimpleCamera
 from smg.rigging.helpers import CameraPoseConverter, CameraUtil
 
 from .drone import Drone
+from ..beacons import Beacon
 
 
 class SimulatedDrone(Drone):
@@ -38,7 +39,7 @@ class SimulatedDrone(Drone):
 
     # CONSTRUCTOR
 
-    def __init__(self, *, drone_origin: Optional[SimpleCamera] = None,
+    def __init__(self, *, beacon_range_std: float = 0.0, drone_origin: Optional[SimpleCamera] = None,
                  image_renderer: Optional[ImageRenderer] = None, image_size: Tuple[int, int] = (640, 480),
                  intrinsics: Tuple[float, float, float, float] = (500, 500, 320, 240)):
         """
@@ -47,14 +48,17 @@ class SimulatedDrone(Drone):
         .. note::
             If drone_origin is set to None, the initial origin for the drone will be the world-space origin.
 
-        :param drone_origin:    The initial origin for the drone (optional).
-        :param image_renderer:  An optional function that can be used to render a synthetic image of what the drone
-                                can see from the current pose of its camera.
-        :param image_size:      The size of the synthetic images that should be rendered for the drone, as a
-                                (width, height) tuple.
-        :param intrinsics:      The camera intrinsics to use when rendering the synthetic images for the drone,
-                                as an (fx, fy, cx, cy) tuple.
+        :param beacon_range_std:    The standard deviation of the zero-mean Gaussian noise to add when getting the
+                                    ranges of the fake beacons (defaults to zero).
+        :param drone_origin:        The initial origin for the drone (optional).
+        :param image_renderer:      An optional function that can be used to render a synthetic image of what the
+                                    drone can see from the current pose of its camera.
+        :param image_size:          The size of the synthetic images that should be rendered for the drone, as a
+                                    (width, height) tuple.
+        :param intrinsics:          The camera intrinsics to use when rendering the synthetic images for the drone,
+                                    as an (fx, fy, cx, cy) tuple.
         """
+        self.__beacon_range_std: float = beacon_range_std
         self.__gimbal_input_history: Deque[float] = deque()
         self.__image_renderer: SimulatedDrone.ImageRenderer = image_renderer \
             if image_renderer is not None else SimulatedDrone.blank_image_renderer
@@ -330,6 +334,37 @@ class SimulatedDrone(Drone):
         :return:    The most recently received value of the remaining battery %, if available, or None otherwise.
         """
         return 100
+
+    def get_beacon_ranges(self, drone_pos: np.ndarray, *,
+                          fake_beacons: Optional[Dict[str, Beacon]] = None) -> Dict[str, float]:
+        """
+        Get the estimated ranges (in m) between the drone and any beacons that are within range.
+
+        .. note::
+            The number of ranges returned may vary over time.
+
+        :param drone_pos:       The current position of the drone.
+        :param fake_beacons:    An optional dictionary of fake beacons with known positions, manually placed in the
+                                scene by the user. Treated as an empty dictionary if not specified.
+        :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
+        """
+        beacon_ranges: Dict[str, float] = {}
+
+        # If no fake beacons were passed in, use an empty dictionary as the default.
+        if fake_beacons is None:
+            fake_beacons = {}
+
+        # For each fake beacon that was passed in:
+        for beacon_name, beacon in fake_beacons.items():
+            # Calculate the (true) range between the beacon and the drone.
+            beacon_range: float = np.linalg.norm(beacon.position - drone_pos)
+
+            # If it's less than the maximum range of the beacon, first add some zero-mean Gaussian noise to the range
+            # to simulate what would happen in the real world, and then add the range to the output dictionary.
+            if beacon_range <= beacon.max_range:
+                beacon_ranges[beacon_name] = beacon_range + np.random.normal(0.0, self.__beacon_range_std)
+
+        return beacon_ranges
 
     def get_image(self) -> np.ndarray:
         """
