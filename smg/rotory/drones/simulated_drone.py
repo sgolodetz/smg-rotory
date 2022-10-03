@@ -49,7 +49,7 @@ class SimulatedDrone(Drone):
             If drone_origin is set to None, the initial origin for the drone will be the world-space origin.
 
         :param beacon_range_std:    The standard deviation of the zero-mean Gaussian noise to add when getting the
-                                    ranges of the fake beacons.
+                                    ranges of the fake beacons (defaults to zero).
         :param drone_origin:        The initial origin for the drone (optional).
         :param image_renderer:      An optional function that can be used to render a synthetic image of what the
                                     drone can see from the current pose of its camera.
@@ -345,7 +345,7 @@ class SimulatedDrone(Drone):
 
         :param drone_pos:       The current position of the drone.
         :param fake_beacons:    An optional dictionary of fake beacons with known positions, manually placed in the
-                                scene by the user. Defaults to an empty dictionary if not specified.
+                                scene by the user. Treated as an empty dictionary if not specified.
         :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
         beacon_ranges: Dict[str, float] = {}

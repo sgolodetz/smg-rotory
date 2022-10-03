@@ -68,6 +68,7 @@ class BeaconLocaliser:
         # Try to localise the beacon.
         result: scipy.optimize.optimize.OptimizeResult = scipy.optimize.minimize(
             BeaconLocaliser.__mean_square_error,
+            # TODO: Figure out which of these initialisation strategies is better.
             np.zeros(3),  # beacon_measurements[0][0],
             args=beacon_measurements,
             method="L-BFGS-B",
@@ -201,12 +202,14 @@ class BeaconLocaliser:
         """Run the beacon localisation thread."""
         # Until the localiser should terminate:
         while not self.__should_terminate.is_set():
-            # Make a copy of the shared variables so that we only need to hold the lock very briefly.
             with self.__lock:
+                # Make a copy of the shared variables so that we only need to hold the lock very briefly.
                 beacon_measurements: Dict[str, List[Tuple[np.ndarray, float]]] = copy.deepcopy(
                     self.__beacon_measurements
                 )
                 dirty_beacons: Set[str] = self.__dirty_beacons.copy()
+
+                # Clear the set of beacons for which localisation needs to be run, as it will be run for them now.
                 self.__dirty_beacons.clear()
 
             # For each beacon for which new measurements have been added since the last localisation attempt:

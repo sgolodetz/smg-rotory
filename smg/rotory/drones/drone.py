@@ -310,7 +310,7 @@ class Drone(ABC):
 
         :param drone_pos:       The current position of the drone.
         :param fake_beacons:    An optional dictionary of fake beacons with known positions, manually placed in the
-                                scene by the user. Defaults to an empty dictionary if not specified.
+                                scene by the user. Treated as an empty dictionary if not specified.
         :return:                A dictionary that maps the names of the beacons to their estimated ranges (in m).
         """
         return {}
