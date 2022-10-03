@@ -57,7 +57,7 @@ class BeaconLocaliser:
         """
         Try to localise a beacon based on measurements of the range to it from a number of different positions.
 
-        :param beacon_measurements: The range measurements, as a list of (receiver position, beacon range) tuples.
+        :param beacon_measurements: The beacon measurements, as a list of (receiver position, beacon range) tuples.
         :param min_needed:          The minimum number of measurements needed for localisation to be attempted.
         :return:                    The estimated location of the beacon, if successful, or None otherwise.
         """
@@ -127,9 +127,13 @@ class BeaconLocaliser:
 
     def get_beacon_measurements(self) -> Dict[str, List[Tuple[np.ndarray, float]]]:
         """
-        TODO
+        Get all of the beacon measurements that are known by the localiser.
 
-        :return:    TODO
+        .. note::
+            We copy the beacon measurements so that callers can use the returned dictionary without having
+            to worry about thread safety.
+
+        :return:    All of the beacon measurements that are known by the localiser.
         """
         with self.__lock:
             return copy.deepcopy(self.__beacon_measurements)
@@ -238,14 +242,15 @@ class BeaconLocaliser:
     @staticmethod
     def __mean_square_error(beacon_pos: np.ndarray, beacon_measurements: List[Tuple[np.ndarray, float]]) -> float:
         """
-        TODO
+        Calculate the mean square error (MSE) associated with a set of beacon measurements given an
+        estimate of the beacon's position.
 
-        :param beacon_pos:          TODO
-        :param beacon_measurements: TODO
-        :return:                    TODO
+        :param beacon_pos:          The estimate of the beacon's position.
+        :param beacon_measurements: The beacon measurements, as a list of (receiver position, beacon range) tuples.
+        :return:                    The calculated mean square error (MSE).
         """
-        # TODO
         mse: float = 0.0
+
         for receiver_pos, measured_distance in beacon_measurements:
             calculated_distance: float = np.linalg.norm(receiver_pos - beacon_pos)
             mse += math.pow(calculated_distance - measured_distance, 2.0)
