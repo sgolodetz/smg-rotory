@@ -368,6 +368,16 @@ class SimulatedDrone(Drone):
 
         return beacon_ranges
 
+    def get_height(self) -> Optional[float]:
+        """
+        Try to get the drone's height (in m).
+
+        :return:    The most recently received value of the drone's height (in m), if available, or None otherwise.
+        """
+        with self.__output_lock:
+            # Note that y points downwards in our coordinate system!
+            return -self.__camera_w_t_c[1, 3]
+
     def get_image(self) -> np.ndarray:
         """
         Get the most recent image received from the drone.
