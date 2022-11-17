@@ -86,7 +86,7 @@ class Tello(Drone):
 
         # Set up the UDP links.
         if local_ip is None:
-            local_ip = LocalIPDetector.get_ip_starting_with("192.168.10")
+            local_ip = LocalIPDetector.get_ip_starting_with("192.168.10.")
 
         self.__cmd_link = UDPLink((local_ip, 8888), remote_endpoint)
         self.__state_link = UDPLink((local_ip, 8890), remote_endpoint)
