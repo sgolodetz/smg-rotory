@@ -141,6 +141,7 @@ class Tello(Drone):
         :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
                                 it to the [-1,1] range if clipping is allowed, else None.
         """
+        # These values were obtained via a calibration process. However, they're untrusted, and should be revisited.
         rate: float = (m_per_s + 0.0755) / 0.6874
         if np.fabs(rate) <= 1.0:
             return rate
@@ -162,6 +163,7 @@ class Tello(Drone):
         :param rate:    The rate (in [-1,1]).
         :return:        The corresponding velocity (in m/s).
         """
+        # These values were obtained via a calibration process. However, they're untrusted, and should be revisited.
         return 0.6874 * rate - 0.0755
 
     def calculate_right_rate(self, m_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
@@ -183,6 +185,9 @@ class Tello(Drone):
         :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
                                 it to the [-1,1] range if clipping is allowed, else None.
         """
+        # The commented-out values were obtained by a calibration process, but didn't work as well in practice as
+        # we were hoping. We're thus using hand-tweaked values instead for now. This needs revisiting.
+
         # rate: float = (m_per_s + 0.0755) / 0.6874
         rate: float = m_per_s / 0.35
         if np.fabs(rate) <= 1.0:
@@ -204,8 +209,11 @@ class Tello(Drone):
         :param rate:    The rate (in [-1,1]).
         :return:        The corresponding velocity (in m/s).
         """
-        return 0.35 * rate
+        # The commented-out values were obtained by a calibration process, but didn't work as well in practice as
+        # we were hoping. We're thus using hand-tweaked values instead for now. This needs revisiting.
+
         # return 0.6874 * rate - 0.0755
+        return 0.35 * rate
 
     def calculate_turn_rate(self, rad_per_s: float, *, allow_clipping: bool = True) -> Optional[float]:
         """
@@ -228,6 +236,7 @@ class Tello(Drone):
         :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
                                 it to the [-1,1] range if clipping is allowed, else None.
         """
+        # These values were obtained via a calibration process. However, they're untrusted, and should be revisited.
         abs_rad_per_s: float = np.fabs(rad_per_s)
 
         if abs_rad_per_s <= 0.526913819:
@@ -250,6 +259,7 @@ class Tello(Drone):
         :param rate:    The rate (in [-1,1]).
         :return:        The corresponding angular velocity (in rad/s).
         """
+        # These values were obtained via a calibration process. However, they're untrusted, and should be revisited.
         abs_rate: float = np.fabs(rate)
 
         if abs_rate <= 0.45:
@@ -278,6 +288,9 @@ class Tello(Drone):
         :return:                The corresponding "raw" rate (in m/s), if it's in range, else the result of clipping
                                 it to the [-1,1] range if clipping is allowed, else None.
         """
+        # The commented-out values were obtained by a calibration process, but didn't work as well in practice as
+        # we were hoping. We're thus using hand-tweaked values instead for now. This needs revisiting.
+
         # rate: float = (m_per_s + 0.0522) / 0.4521
         rate: float = m_per_s / 0.25
         if np.fabs(rate) <= 1.0:
@@ -299,8 +312,11 @@ class Tello(Drone):
         :param rate:    The rate (in [-1,1]).
         :return:        The corresponding velocity (in m/s).
         """
-        return 0.25 * rate
+        # The commented-out values were obtained by a calibration process, but didn't work as well in practice as
+        # we were hoping. We're thus using hand-tweaked values instead for now. This needs revisiting.
+
         # return 0.4521 * rate - 0.0522
+        return 0.25 * rate
 
     def deactivate_motors(self) -> None:
         """Deactivate the drone's motors."""
