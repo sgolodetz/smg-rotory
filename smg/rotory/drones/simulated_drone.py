@@ -102,10 +102,10 @@ class SimulatedDrone(Drone):
     # PUBLIC STATIC METHODS
 
     @staticmethod
-    def blank_image_renderer(camera_w_t_c: np.ndarray, chassis_w_t_c, image_size: Tuple[int, int],
-                             intrinsics: Tuple[float, float, float, float]) -> np.ndarray:
+    def blank_image_renderer(camera_w_t_c: np.ndarray, chassis_w_t_c: np.ndarray, image_size: Tuple[int, int],
+                             intrinsics: Tuple[float, float, float, float]) -> Tuple[np.ndarray, np.ndarray]:
         """
-        Render a blank image as a dummy version of what the drone can see of the scene from its current pose.
+        Render a blank RGB-D image as a dummy version of what the drone can see of the scene from its current pose.
 
         .. note::
             This is useful when we want to use a simulated drone but don't need to worry about what it can see.
@@ -114,10 +114,12 @@ class SimulatedDrone(Drone):
         :param chassis_w_t_c:   The pose of the drone's chassis.
         :param image_size:      The size of image to render.
         :param intrinsics:      The camera intrinsics.
-        :return:                The rendered image.
+        :return:                The rendered RGB-D image, as a (colour image, depth image) pair.
         """
         width, height = image_size
-        return np.zeros((height, width, 3), dtype=np.uint8)
+        dummy_colour_image: np.ndarray = np.zeros((height, width, 3), dtype=np.uint8)
+        dummy_depth_image: np.ndarray = np.zeros((height, width), dtype=np.float32)
+        return dummy_colour_image, dummy_depth_image
 
     # PUBLIC METHODS
 
@@ -365,6 +367,16 @@ class SimulatedDrone(Drone):
                 beacon_ranges[beacon_name] = beacon_range + np.random.normal(0.0, self.__beacon_range_std)
 
         return beacon_ranges
+
+    def get_height(self) -> Optional[float]:
+        """
+        Try to get the drone's height (in m).
+
+        :return:    The most recently received value of the drone's height (in m), if available, or None otherwise.
+        """
+        with self.__output_lock:
+            # Note that y points downwards in our coordinate system!
+            return -self.__camera_w_t_c[1, 3]
 
     def get_image(self) -> np.ndarray:
         """
